@@ -1,0 +1,18 @@
+{
+  "name": "agentdock-mock",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AgentDock Windows CLI terminal prototype",
+  "scripts": {
+    "terminal": "node app/terminal/terminal-app.cjs",
+    "test": "node --test tests/mock-engine.test.cjs tests/session-runtime.test.cjs tests/output-flow-controller.test.cjs tests/node-pty-driver.test.cjs tests/cli-launch-resolver.test.cjs tests/terminal-app.test.cjs tests/terminal-ui-server.test.cjs tests/session-runtime-fake-cli.test.cjs tests/node-pty-job-cleanup.integration.test.cjs tests/node-pty-conpty.integration.test.cjs tests/session-runtime-pty-backpressure.integration.test.cjs",
+    "test:browser": "node tests/mock-browser.cjs",
+    "postinstall": "node scripts/apply-node-pty-patch.cjs && node scripts/rebuild-node-pty.cjs"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "6.0.0",
+    "node-pty": "1.1.0",
+    "ws": "8.22.0"
+  }
+}

@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>AgentDock · AI 工作台 · 模拟演示</title>
+  <style>
+    :root{font-family:'Segoe UI','Microsoft YaHei UI',sans-serif;font-size:13px;color:#e7e8ef;background:#11131b;color-scheme:dark;--muted:#9298a9;--border:#2b2f3e;--accent:#91b4ff;--green:#83dbad;--red:#f08b8b}
+    *{box-sizing:border-box}body{margin:0;overflow:hidden}button,input,textarea,select{font:inherit}button{cursor:pointer;color:inherit;background:#232736;border:1px solid #353b50;border-radius:6px;min-height:32px;padding:5px 12px;white-space:nowrap}button:hover:not(:disabled){background:#30364a;border-color:#596583}button:disabled{cursor:default;opacity:.43}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}input,textarea,select{color:inherit;background:#11141e;border:1px solid #353b50;border-radius:6px;padding:8px 10px;min-width:0}input::placeholder,textarea::placeholder{color:#777f93}button.primary{background:#91b4ff;color:#11182a;border-color:#91b4ff;font-weight:600}button.primary:hover:not(:disabled){background:#b3ccff}button.danger{color:#f6a7a7;border-color:#78464f;background:#35232e}.quiet{background:transparent;border-color:transparent}.icon-button{width:32px;padding:0;font-size:18px}.muted{color:var(--muted)}[hidden]{display:none!important}
+    .app{height:100dvh;min-height:420px;display:grid;grid-template-rows:56px 1fr 28px}.appbar{display:flex;align-items:center;gap:12px;padding:0 20px;border-bottom:1px solid var(--border);background:#151722}.brand{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:650;letter-spacing:-.4px}.logo{width:27px;height:27px;border-radius:7px;background:#91b4ff;color:#11182a;display:grid;place-items:center;font:700 18px Consolas,monospace}.badge{font-size:11px;color:#dbbf89;background:#302a22;border:1px solid #594b34;border-radius:4px;padding:3px 7px;letter-spacing:.3px}.app-caption{color:#858b9c;font-size:12px}.appbar-spacer{flex:1}.live-count{display:flex;align-items:center;gap:8px;color:#bbc1d2;font-size:12px}.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green)}.content{display:flex;min-height:0;position:relative}.sidebar{width:280px;flex:none;background:#151722;border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}.sidebar-heading{display:flex;align-items:center;justify-content:space-between;padding:20px 16px 12px;font-size:12px;color:#b6bdce;font-weight:600}.side-actions{display:flex;gap:8px;padding:0 16px 14px}.side-actions .primary{flex:1}.search-wrap{padding:0 16px 16px}.search{width:100%;height:34px;background:#10131c;font-size:12px}.tree{flex:1;overflow:auto;padding:0 8px 20px;scrollbar-width:thin}.project{margin-bottom:12px}.project-heading{display:flex;align-items:center;padding:3px 4px;gap:4px}.project-toggle{display:flex;align-items:center;gap:8px;min-width:0;flex:1;text-align:left;padding:6px 4px;border:0;background:transparent;font-weight:600}.project-name{overflow:hidden;text-overflow:ellipsis}.project-count{color:#717b91;font-size:11px;font-weight:400;margin-left:auto}.project-add{font-size:17px;width:27px;min-height:27px;padding:0}.project-parent{font-size:10px;color:#9298a9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 12px 5px 31px}.shared-side{font-size:10px;color:#b6a882;padding:0 12px 6px 31px}.session{display:flex;align-items:center;gap:10px;width:100%;min-height:65px;padding:10px 11px;text-align:left;background:transparent;border:1px solid transparent;border-left:3px solid transparent;border-radius:5px;margin:2px 0}.session.active{background:#252e42;border-color:#33415f;border-left-color:var(--accent)}.agent-icon{display:grid;place-items:center;width:27px;height:27px;flex:none;border:1px solid #39475f;border-radius:7px;font:600 15px Consolas,monospace;background:#202a3b;color:#a6c4ff}.agent-icon.agy{color:#91d4b1;background:#1c2e29;border-color:#304d42}.agent-icon.claude{color:#edb494;background:#332a27;border-color:#534039}.session-text{flex:1;min-width:0}.session-agent{display:block;font-size:11px;color:#b9c1d5;margin-bottom:4px}.session-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}.session-state{margin-left:auto;font-size:10px;color:var(--muted);align-self:flex-start;padding-top:3px;white-space:nowrap}.session-state::before,.status-pill::before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:currentColor;margin-right:5px;vertical-align:2px}.running{color:var(--green)!important}.starting,.stopping{color:#e1c58c!important}.failed{color:var(--red)!important}.unread{width:6px;height:6px;background:var(--accent);border-radius:50%;display:inline-block;margin-left:6px;box-shadow:0 0 0 3px #91b4ff12}.side-footer{padding:13px 16px;border-top:1px solid var(--border);font-size:11px;color:#858b9c;display:flex;justify-content:space-between}.empty-search{color:var(--muted);padding:28px 12px;line-height:1.8;text-align:center}
+    .workspace{flex:1;min-width:0;display:flex;flex-direction:column;background:#1a1d29}.workspace-head{padding:18px 24px 14px;border-bottom:1px solid var(--border);background:#191c27}.head-top{display:flex;align-items:center;gap:10px}.head-title{font-size:15px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:32px;margin:0}.tool-label{color:#a3aec5;font-weight:400;font-size:13px}.status-pill{font-size:11px;color:var(--muted);white-space:nowrap}.head-path{display:flex;gap:8px;align-items:center;margin:6px 0 0 37px;color:#9ca5bb;min-height:24px}.path-text{font:12px Consolas,'Microsoft YaHei UI',monospace;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;min-width:0}.copy-button{font-size:11px;min-height:23px;padding:1px 6px;color:#a8b9dc;border:0;background:transparent}.context-strip{display:flex;gap:12px;align-items:center;padding:9px 24px;background:#1c202d;border-bottom:1px solid #2b2f3e;font-size:11px;color:#949eb5;min-height:34px}.shared-note{color:#ddc48b}.terminal-area{flex:1;position:relative;min-height:0}.terminal{height:100%;overflow:auto;padding:26px 30px 40px;scrollbar-width:thin;scrollbar-color:#3b4359 transparent;overflow-anchor:none}.terminal-lines{max-width:100%;font-family:'Cascadia Mono',Consolas,'Microsoft YaHei UI',monospace;font-size:13px;line-height:1.8}.line{white-space:pre-wrap;overflow-wrap:anywhere;min-height:23px;color:#b9c2d6}.line.system{color:#8593ae}.line.heading{color:#e7e8ef;font-weight:600;margin:5px 0 8px}.line.input{color:#e7e8ef;margin-top:14px;padding:9px 12px;border-left:2px solid #91b4ff;background:#202839}.line.output{color:#b5c8ec}.line.success{color:#83cdaa}.line.error{color:var(--red)}.line.separator{color:#7786a3;border-top:1px solid var(--border);padding-top:14px;margin-top:18px}.line-time{font-size:10px;color:#6e7a92;margin-right:13px;user-select:none}.latest{position:absolute;bottom:16px;right:25px;background:#28354f;border-color:#536991;font-size:12px;box-shadow:0 4px 16px #1118}.runtime-error{padding:9px 24px;background:#36242e;color:#f3afb6;font-size:12px;border-bottom:1px solid #6c3d48}.composer{padding:14px 24px 12px;border-top:1px solid var(--border);background:#191c27}.composer-box{display:flex;gap:12px;align-items:flex-end;border:1px solid #3b445c;background:#121621;border-radius:8px;padding:10px 12px}.prompt{color:#91b4ff;font:18px Consolas,monospace;align-self:flex-start;padding-top:3px}.composer textarea{flex:1;border:0;resize:none;outline:none!important;background:transparent;padding:4px 0;min-height:32px;max-height:112px;line-height:1.6}.composer-hint{display:flex;justify-content:space-between;gap:16px;color:#7f899f;font-size:10px;padding:8px 1px 0}.empty-workspace{flex:1;display:flex;align-items:center;justify-content:center;text-align:center}.empty-symbol{font:32px Consolas,monospace;color:#91b4ff;margin-bottom:20px}.empty-workspace h1{font-size:20px;font-weight:500}.empty-workspace p{color:var(--muted);font-size:13px;line-height:1.9;margin:12px 0 24px}.statusbar{display:flex;align-items:center;gap:15px;border-top:1px solid var(--border);background:#141722;padding:0 16px;font-size:10px;color:#8f99b0}.statusbar .right{margin-left:auto;color:#717c92}.storage-warning{padding:9px 16px;background:#3d2b24;color:#f0c49d;display:flex;align-items:center;gap:12px;font-size:12px}.storage-warning span{flex:1}.storage-warning button{min-height:26px;padding:2px 8px}.save-state{color:#91b39e}.menu-wrap{position:relative}.menu{position:absolute;right:0;top:40px;z-index:8;width:242px;background:#222635;border:1px solid #414a62;border-radius:8px;padding:6px;box-shadow:0 14px 40px #0006}.menu>button,.menu label,.menu summary{display:block;width:100%;text-align:left;padding:8px 9px;font-size:12px;background:transparent;border:0;border-radius:4px;min-height:34px}.menu label{display:flex;gap:9px;align-items:center;cursor:pointer}.menu input{accent-color:var(--accent);margin:0}.menu hr{border:0;border-top:1px solid #353b50;margin:5px 4px}.menu summary{cursor:pointer;color:#929eb7}.menu details button{width:100%;text-align:left;font-size:11px;background:transparent;border:0;padding-left:15px}.menu .remove{color:#f4a2a2}.mobile-toggle,.sidebar-close{display:none}.scrim{display:none}
+    dialog{color:inherit;background:#1b1f2c;border:1px solid #414b63;border-radius:12px;padding:0;width:min(500px,calc(100vw - 32px));max-height:calc(100dvh - 40px);box-shadow:0 28px 100px #0009}dialog::backdrop{background:#080b14b8;backdrop-filter:blur(4px)}.dialog-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 12px}.dialog-head h2{margin:0;font-size:17px;font-weight:600}.dialog-body{padding:0 24px 22px}.dialog-intro{color:#929db4;font-size:12px;line-height:1.7;margin:0 0 20px}.field{display:block;margin:0 0 18px}.field-title{display:block;color:#c4cbda;font-size:12px;margin-bottom:8px}.field input,.field select{width:100%;height:37px}.agent-choices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.agent-choice{padding:10px 4px;background:#161a25;min-height:66px;border-color:#343d52;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:6px}.agent-choice[aria-pressed=true]{border-color:var(--accent);background:#26324b;color:#c1d5ff}.agent-choice .symbol{font:18px Consolas,monospace}.directory-row{display:flex;gap:8px}.directory-row input{flex:1;font-family:Consolas,'Microsoft YaHei UI',monospace;font-size:12px}.directory-row button{font-size:12px}.field-help{display:block;color:#848fa5;font-size:11px;line-height:1.7;margin-top:7px}.directory-options{display:grid;gap:5px;margin-top:8px;padding:7px;background:#111621;border:1px solid #38435c;border-radius:6px}.directory-options button{text-align:left;font:11px Consolas,'Microsoft YaHei UI',monospace;overflow:hidden;text-overflow:ellipsis;background:transparent;border:0;min-height:30px}.check-field{display:flex;align-items:center;gap:9px;font-size:12px}.check-field input{accent-color:var(--accent);width:15px;height:15px}.dialog-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 24px;border-top:1px solid var(--border);background:#181c28;border-radius:0 0 12px 12px}.form-error{color:var(--red);font-size:12px;min-height:18px;margin:10px 0 0}.confirm-copy{white-space:pre-line;color:#b1bbd0;line-height:1.9;font-size:13px;margin:3px 0 0}.toast{position:fixed;left:50%;bottom:47px;transform:translateX(-50%);background:#30394f;border:1px solid #53617e;color:#e7e8ef;padding:10px 18px;border-radius:7px;max-width:90vw;box-shadow:0 8px 32px #0007;font-size:12px;z-index:30}.live-region{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+    .app{grid-template-columns:minmax(0,1fr)}.content{min-width:0}#status-summary{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .composer textarea:focus-visible{outline:2px solid var(--accent)!important;outline-offset:4px}.composer-box:focus-within{border-color:#91b4ff}
+    @media(max-width:1100px){.app-caption{display:none}.workspace-head{padding:14px 18px 12px}.terminal{padding:22px}.composer{padding:12px 18px}.head-path{margin-left:0}.sidebar{width:280px}.context-strip{padding-left:18px}}
+    @media(max-width:959px){.mobile-toggle,.sidebar-close{display:block}.sidebar{position:absolute;left:0;top:0;bottom:0;z-index:12;box-shadow:16px 0 50px #0007;transform:translateX(-105%);transition:transform .15s}.content.sidebar-open .sidebar{transform:translateX(0)}.content.sidebar-open .scrim{display:block;position:absolute;inset:0;background:#090d1699;z-index:11;border:0;border-radius:0}.appbar{padding:0 12px;gap:8px}.context-strip{flex-wrap:wrap;gap:5px}.head-title{font-size:14px}.head-top{gap:8px}.head-top>.agent-icon{display:none}.app-caption{display:none}.live-count{font-size:10px}.tool-label{display:none}.composer-hint span:last-child{display:none}.terminal{padding:18px}.statusbar .right{display:none}}
+    @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="appbar">
+      <button class="mobile-toggle quiet" id="show-projects" aria-label="展开项目与会话" aria-expanded="false">☰ 项目</button>
+      <div class="brand"><span class="logo" aria-hidden="true">›_</span>AgentDock</div>
+      <span class="badge">模拟演示</span><span class="app-caption">你的项目，你的 AI 工作台</span>
+      <span class="appbar-spacer"></span><span class="live-count"><span class="live-dot" aria-hidden="true"></span><span id="running-count">0 个模拟终端运行中</span></span>
+    </header>
+    <div class="content" id="layout">
+      <button class="scrim" id="hide-projects" aria-label="关闭项目侧栏" tabindex="-1"></button>
+      <aside class="sidebar" aria-label="项目与会话">
+        <div class="sidebar-heading"><span>项目与会话</span><button class="sidebar-close quiet icon-button" id="close-sidebar" aria-label="收起项目侧栏">×</button><span class="muted desktop-only">WORKSPACE</span></div>
+        <div class="side-actions"><button class="primary" id="new-session">＋ 新建会话</button><button id="start-all">启动全部</button></div>
+        <div class="search-wrap"><input class="search" id="search" type="search" placeholder="搜索项目或会话…" aria-label="搜索项目或会话"></div>
+        <nav class="tree" id="tree" aria-label="项目会话树"></nav>
+        <div class="side-footer"><span id="tree-count">2 个项目 · 3 个会话</span><span>本地 Mock</span></div>
+      </aside>
+      <main class="workspace">
+        <div class="storage-warning" id="storage-warning" role="alert" hidden><span id="storage-message"></span><button id="retry-save">重试保存</button></div>
+        <div class="workspace-head" id="workspace-head">
+          <div class="head-top"><span class="agent-icon" id="active-icon" aria-hidden="true">◎</span><h1 class="head-title"><span id="active-tool"></span><span class="tool-label"> / </span><span id="active-name"></span></h1><span class="status-pill" id="active-status"></span><button id="toggle-run">停止终端</button><div class="menu-wrap"><button class="quiet icon-button" id="session-menu" aria-label="会话操作" aria-expanded="false" aria-controls="menu">⋯</button><div class="menu" id="menu" hidden><label><input type="checkbox" id="launch-on-open">随应用启动</label><button id="other-directory">在其他目录新建会话</button><hr><details><summary>模拟故障与退出</summary><button id="fail-start">下次启动模拟失败</button><button id="fail-stop">下次停止模拟失败</button><button id="simulate-exit">模拟异常退出（退出码 1）</button></details><hr><button class="remove" id="remove-session">移除会话</button></div></div></div>
+          <div class="head-path"><span class="path-text" id="active-path"></span><button class="copy-button" id="copy-path" aria-label="复制完整项目路径">复制路径</button></div>
+        </div>
+        <div class="context-strip" id="context-strip"><span>模拟终端 · 未连接本机 CLI</span><span id="shared-note" class="shared-note" hidden>共用项目文件 · 独立终端不隔离文件</span></div>
+        <div class="runtime-error" id="runtime-error" role="status" hidden></div>
+        <div class="terminal-area" id="terminal-area"><div id="terminal-panes" style="height:100%"></div><button class="latest" id="latest" hidden>↓ 回到最新</button></div>
+        <form class="composer" id="composer"><div class="composer-box"><span class="prompt" aria-hidden="true">›</span><textarea id="composer-input" rows="1" placeholder="输入模拟指令，体验独立会话…" aria-label="当前会话的模拟指令" spellcheck="false"></textarea><button class="primary" id="send" type="submit">发送 ↵</button></div><div class="composer-hint"><span>Enter 发送 · Shift + Enter 换行</span><span>仅生成示例输出，不执行命令</span></div></form>
+        <div class="empty-workspace" id="empty-workspace" hidden><div><div class="empty-symbol" aria-hidden="true">[ ›_ ]</div><h1>新建第一个会话</h1><p>为每个 AI 选择自己的项目目录。<br>此处是模拟演示，不会启动真实 CLI。</p><button class="primary" id="new-first">＋ 新建会话</button></div></div>
+      </main>
+    </div>
+    <footer class="statusbar"><span id="status-summary">AgentDock Mock</span><span id="save-state" class="save-state">配置已保存</span><span class="right">进程状态独立于 AI 工作状态 · 输出仅保留在本次页面内</span></footer>
+  </div>
+  <dialog id="create-dialog" aria-labelledby="create-title">
+    <form id="create-form">
+      <div class="dialog-head"><h2 id="create-title">新建会话</h2><button class="quiet icon-button" type="button" id="close-create" aria-label="关闭新建会话">×</button></div>
+      <div class="dialog-body"><p class="dialog-intro">独立选择工具和目录，相同目录自动归入同一项目。</p>
+        <div class="field"><span class="field-title">选择工具</span><div class="agent-choices" aria-label="选择 AI 工具"><button type="button" class="agent-choice" data-agent="codex" aria-pressed="true"><span class="symbol">◎</span>Codex</button><button type="button" class="agent-choice" data-agent="agy" aria-pressed="false"><span class="symbol">△</span>Antigravity</button><button type="button" class="agent-choice" data-agent="claude" aria-pressed="false"><span class="symbol">✳</span>Claude Code</button></div></div>
+        <label class="field" for="directory"><span class="field-title">项目目录 <span class="muted">/ 模拟</span></span><span class="directory-row"><input id="directory" required placeholder="D:\Projects\my-project" autocomplete="off"><button type="button" id="pick-directory" aria-expanded="false" aria-controls="directory-options">选择模拟目录</button></span><span class="field-help">可手动填写 Windows 绝对路径。此处不读取文件、不校验磁盘是否存在。</span></label>
+        <div class="directory-options" id="directory-options" hidden></div>
+        <p class="field-help" id="directory-sharing" hidden></p>
+        <label class="field" for="session-name"><span class="field-title">会话名称 <span class="muted">/ 可选</span></span><input id="session-name" maxlength="80" placeholder="例如：页面开发、代码检查" autocomplete="off"></label>
+        <label class="check-field"><input type="checkbox" id="create-auto" checked>随应用启动<span class="muted">（此阶段为刷新后自动模拟启动）</span></label>
+        <p class="form-error" id="create-error" role="alert"></p>
+      </div><div class="dialog-foot"><button type="button" id="cancel-create">取消</button><button class="primary" id="create-submit" type="submit">创建并启动</button></div>
+    </form>
+  </dialog>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title"><div class="dialog-head"><h2 id="confirm-title"></h2></div><div class="dialog-body"><p class="confirm-copy" id="confirm-copy"></p></div><div class="dialog-foot"><button id="cancel-confirm">取消</button><button class="danger" id="accept-confirm">确认</button></div></dialog>
+  <div class="toast" id="toast" role="status" hidden></div><div class="live-region" id="announcer" aria-live="polite"></div>
+  <script id="mock-engine">
+    class AgentDockEngine {
+      static storageKey = 'agentdock.mock.workspace.v1';
+      static agents = { codex: { name: 'Codex', icon: '◎' }, agy: { name: 'Antigravity', icon: '△' }, claude: { name: 'Claude Code', icon: '✳' } };
+      constructor(storage, clock = { setTimeout: (callback, delay) => setTimeout(callback, delay), clearTimeout: timer => clearTimeout(timer) }) {
+        this.storage = storage;
+        this.clock = clock;
+        this.runtimes = new Map();
+        this.onChange = () => {};
+        this.saveError = '';
+        this.workspace = { schemaVersion: 1, projects: [], sessions: [], activeSessionId: null };
+        try {
+          const stored = storage.getItem(AgentDockEngine.storageKey);
+          if (stored !== null) {
+            const workspace = JSON.parse(stored);
+            this.validate(workspace);
+            this.workspace = workspace;
+          } else {
+            const website = this.create({ agent: 'codex', rootPath: 'D:\\Projects\\website', name: '页面开发', launchOnOpen: true }, false);
+            this.create({ agent: 'claude', rootPath: 'D:\\Projects\\website', name: '代码检查', launchOnOpen: true }, false);
+            this.create({ agent: 'agy', rootPath: 'D:\\Projects\\content-tools', name: '内容整理', launchOnOpen: true }, false);
+            this.workspace.activeSessionId = website.id;
+            this.save();
+          }
+        } catch {
+          this.workspace = { schemaVersion: 1, projects: [], sessions: [], activeSessionId: null };
+          this.saveError = '配置读取失败：未覆盖原配置，可在本次页面中新建模拟会话。';
+        }
+      }
+      normalizePath(value) {
+        const input = String(value || '').trim().replaceAll('/', '\\');
+        if (!/^[a-zA-Z]:\\/.test(input) && !/^\\\\[^\\]+\\[^\\]+/.test(input)) throw new Error('请输入 Windows 绝对路径，例如 D:\\Projects\\website');
+        if (/[<>"|?*\x00-\x1f]/.test(input) || input.slice(2).includes(':')) throw new Error('模拟目录含有无效路径字符');
+        const isUnc = input.startsWith('\\\\');
+        const segments = input.split('\\').filter(Boolean);
+        const anchorLength = isUnc ? 2 : 1;
+        const resolved = segments.slice(0, anchorLength);
+        for (const segment of segments.slice(anchorLength)) {
+          if (segment === '.') continue;
+          if (segment === '..') { if (resolved.length > anchorLength) resolved.pop(); }
+          else resolved.push(segment);
+        }
+        if (isUnc) return '\\\\' + resolved.join('\\');
+        resolved[0] = resolved[0].toUpperCase();
+        return resolved.join('\\') + (resolved.length === 1 ? '\\' : '');
+      }
+      validate(workspace) {
+        if (workspace?.schemaVersion !== 1 || !Array.isArray(workspace.projects) || !Array.isArray(workspace.sessions)) throw new Error('配置格式无效');
+        const projectIds = new Set();
+        const pathKeys = new Set();
+        for (const project of workspace.projects) {
+          if (typeof project.id !== 'string' || projectIds.has(project.id) || typeof project.name !== 'string' || this.normalizePath(project.rootPath) !== project.rootPath || project.pathKey !== project.rootPath || pathKeys.has(project.pathKey)) throw new Error('项目配置无效');
+          projectIds.add(project.id); pathKeys.add(project.pathKey);
+        }
+        const sessionIds = new Set();
+        for (const session of workspace.sessions) {
+          if (typeof session.id !== 'string' || sessionIds.has(session.id) || !projectIds.has(session.projectId) || !Object.hasOwn(AgentDockEngine.agents, session.agent) || typeof session.name !== 'string' || typeof session.launchOnOpen !== 'boolean') throw new Error('会话配置无效');
+          sessionIds.add(session.id);
+        }
+        if (!sessionIds.has(workspace.activeSessionId)) workspace.activeSessionId = workspace.sessions[0]?.id || null;
+      }
+      runtime(id) {
+        if (!this.runtimes.has(id)) this.runtimes.set(id, { runId: null, status: 'idle', lines: [], timers: new Set(), unread: false, draft: '', scrollTop: 0, follow: true, error: '', exitCode: null, failNextStart: false, failNextStop: false, stopPromise: null });
+        return this.runtimes.get(id);
+      }
+      session(id) { return this.workspace.sessions.find(session => session.id === id); }
+      project(id) { return this.workspace.projects.find(project => project.id === id); }
+      save() {
+        try {
+          const { schemaVersion, projects, sessions, activeSessionId } = this.workspace;
+          this.storage.setItem(AgentDockEngine.storageKey, JSON.stringify({ schemaVersion, projects, sessions, activeSessionId }));
+          this.saveError = '';
+        } catch { this.saveError = '配置未保存：浏览器存储不可用或空间不足，关闭页面将丢失更改。'; }
+        this.onChange({ type: 'saved' });
+      }
+      create({ agent, rootPath, name = '', launchOnOpen = true }, persist = true) {
+        if (!Object.hasOwn(AgentDockEngine.agents, agent)) throw new Error('请选择支持的工具');
+        const normalized = this.normalizePath(rootPath);
+        let project = this.workspace.projects.find(project => project.pathKey === normalized);
+        if (!project) {
+          project = { id: crypto.randomUUID(), name: normalized.replace(/\\$/, '').split('\\').pop(), rootPath: normalized, pathKey: normalized };
+          this.workspace.projects.push(project);
+        }
+        const session = { id: crypto.randomUUID(), projectId: project.id, agent, name: name.trim().slice(0, 80) || '新会话', launchOnOpen: Boolean(launchOnOpen) };
+        this.workspace.sessions.push(session);
+        this.workspace.activeSessionId = session.id;
+        if (persist) { this.save(); this.onChange({ type: 'workspace', id: session.id }); }
+        return session;
+      }
+      select(id) {
+        if (!this.session(id)) return;
+        this.workspace.activeSessionId = id;
+        this.runtime(id).unread = false;
+        this.save(); this.onChange({ type: 'selection', id });
+      }
+      setLaunchOnOpen(id, enabled) {
+        const session = this.session(id);
+        if (!session) return;
+        session.launchOnOpen = enabled;
+        this.save(); this.onChange({ type: 'workspace', id });
+      }
+      append(id, text, kind = 'system') {
+        const runtime = this.runtime(id);
+        const entry = { text, kind, time: new Date().toLocaleTimeString('zh-CN', { hour12: false }) };
+        runtime.lines.push(entry);
+        if (runtime.lines.length > 5000) runtime.lines.shift();
+        if (this.workspace.activeSessionId !== id) runtime.unread = true;
+        this.onChange({ type: 'output', id, entry });
+      }
+      output(id, runId, text, kind = 'output') {
+        const runtime = this.runtimes.get(id);
+        if (!this.session(id) || !runtime || runtime.runId !== runId || runtime.status !== 'running') return false;
+        this.append(id, text, kind);
+        return true;
+      }
+      schedule(id, runId, delay, callback) {
+        const runtime = this.runtime(id);
+        const timer = this.clock.setTimeout(() => {
+          runtime.timers.delete(timer);
+          if (this.session(id) && runtime.runId === runId) callback();
+        }, delay);
+        runtime.timers.add(timer);
+      }
+      clearTimers(runtime) {
+        for (const timer of runtime.timers) this.clock.clearTimeout(timer);
+        runtime.timers.clear();
+      }
+      heartbeat(id, runId) {
+        this.schedule(id, runId, 7000, () => {
+          if (this.output(id, runId, '[模拟] 后台终端仍在运行；这不表示 AI 正在处理任务。', 'system')) this.heartbeat(id, runId);
+        });
+      }
+      start(id) {
+        const session = this.session(id);
+        if (!session) return false;
+        const runtime = this.runtime(id);
+        if (['starting', 'running', 'stopping'].includes(runtime.status)) return false;
+        this.clearTimers(runtime);
+        const hasRun = runtime.runId !== null;
+        runtime.runId = crypto.randomUUID(); runtime.status = 'starting'; runtime.error = ''; runtime.exitCode = null;
+        const runId = runtime.runId;
+        this.append(id, hasRun ? '[模拟] ── 新的一次运行 · 不恢复模型对话，不重放历史输入 ──' : '[模拟] AgentDock / 独立终端演示', hasRun ? 'separator' : 'heading');
+        this.onChange({ type: 'status', id });
+        this.schedule(id, runId, 350, () => {
+          if (runtime.status !== 'starting') return;
+          if (runtime.failNextStart) {
+            runtime.failNextStart = false; runtime.status = 'failed'; runtime.error = '模拟启动失败：此错误仅用于体验，未查找或启动本机 CLI。';
+            this.append(id, runtime.error, 'error');
+          } else {
+            runtime.status = 'running';
+            this.output(id, runId, `[模拟] ${AgentDockEngine.agents[session.agent].name} · ${session.name}`, 'heading');
+            this.output(id, runId, `[模拟] 工作目录：${this.project(session.projectId).rootPath}`, 'system');
+            this.output(id, runId, '[模拟] 终端已启动。可在下方输入任意文字，切换会话后输出仍会继续。', 'success');
+            this.output(id, runId, '[模拟] 所有内容均为示例：未执行命令、未读取文件、未连接模型。', 'system');
+            this.heartbeat(id, runId);
+          }
+          this.onChange({ type: 'status', id });
+        });
+        return true;
+      }
+      startAll() { for (const session of this.workspace.sessions) this.start(session.id); }
+      startAuto() { for (const session of this.workspace.sessions) if (session.launchOnOpen) this.start(session.id); }
+      send(id, text) {
+        const session = this.session(id);
+        const runtime = this.runtimes.get(id);
+        if (!session || runtime?.status !== 'running' || !text.trim()) return false;
+        const runId = runtime.runId;
+        const input = text.trim();
+        this.output(id, runId, `[模拟输入] › ${input}`, 'input');
+        runtime.draft = '';
+        this.schedule(id, runId, 500, () => this.output(id, runId, `[模拟] ${AgentDockEngine.agents[session.agent].name} 收到：${input}`));
+        this.schedule(id, runId, 1100, () => this.output(id, runId, `[模拟] 示例处理记录属于「${session.name}」，工作目录保持 ${this.project(session.projectId).rootPath}。`));
+        this.schedule(id, runId, 1700, () => this.output(id, runId, '[模拟] 此段示例输出结束；没有实际执行任务、提交文件或运行测试。', 'system'));
+        return true;
+      }
+      stop(id) {
+        const session = this.session(id);
+        if (!session) return Promise.resolve(false);
+        const runtime = this.runtime(id);
+        if (runtime.status === 'stopping') return runtime.stopPromise;
+        if (!['starting', 'running'].includes(runtime.status)) return Promise.resolve(true);
+        const previousStatus = runtime.status;
+        const runId = runtime.runId;
+        this.clearTimers(runtime);
+        runtime.status = 'stopping'; runtime.error = '';
+        this.onChange({ type: 'status', id });
+        runtime.stopPromise = new Promise(resolve => {
+          this.schedule(id, runId, 400, () => {
+            if (runtime.failNextStop) {
+              runtime.failNextStop = false; runtime.status = previousStatus === 'starting' ? 'running' : previousStatus;
+              runtime.error = '模拟停止失败：终端仍保留，请重试停止。';
+              this.append(id, runtime.error, 'error');
+              this.heartbeat(id, runId);
+            } else {
+              runtime.status = 'stopped'; runtime.exitCode = 0;
+              this.append(id, '[模拟] 终端已停止（退出码 0）；本次输出仍保留。', 'system');
+            }
+            runtime.stopPromise = null;
+            this.onChange({ type: 'status', id });
+            resolve(runtime.status === 'stopped');
+          });
+        });
+        return runtime.stopPromise;
+      }
+      exit(id, runId, code) {
+        const runtime = this.runtimes.get(id);
+        if (!this.session(id) || !runtime || runtime.runId !== runId || !['starting', 'running'].includes(runtime.status)) return false;
+        this.clearTimers(runtime);
+        runtime.status = 'stopped'; runtime.exitCode = code;
+        runtime.error = code ? `模拟退出异常：退出码 ${code}。可启动新的运行，其他会话不受影响。` : '';
+        this.append(id, `[模拟] 终端退出，退出码 ${code}。`, code ? 'error' : 'system');
+        this.onChange({ type: 'status', id });
+        return true;
+      }
+      async remove(id) {
+        const index = this.workspace.sessions.findIndex(session => session.id === id);
+        if (index < 0) return false;
+        if (!await this.stop(id)) return false;
+        const currentIndex = this.workspace.sessions.findIndex(session => session.id === id);
+        if (currentIndex < 0) return false;
+        this.clearTimers(this.runtime(id));
+        this.workspace.sessions.splice(currentIndex, 1);
+        this.runtimes.delete(id);
+        this.workspace.projects = this.workspace.projects.filter(project => this.workspace.sessions.some(session => session.projectId === project.id));
+        if (this.workspace.activeSessionId === id) {
+          this.workspace.activeSessionId = this.workspace.sessions[Math.min(currentIndex, this.workspace.sessions.length - 1)]?.id || null;
+          if (this.workspace.activeSessionId) this.runtime(this.workspace.activeSessionId).unread = false;
+        }
+        this.save(); this.onChange({ type: 'removed', id });
+        return true;
+      }
+    }
+    globalThis.AgentDockEngine = AgentDockEngine;
+  </script>
+  <script>
+    const element = id => document.getElementById(id);
+    const statusNames = { idle: '未启动', starting: '启动中', running: '运行中', stopping: '停止中', stopped: '已停止', failed: '启动失败' };
+    const agents = AgentDockEngine.agents;
+    let browserStorage;
+    try { browserStorage = window.localStorage; } catch { browserStorage = { getItem() { return null; }, setItem() { throw new Error('存储不可用'); } }; }
+    const engine = new AgentDockEngine(browserStorage);
+    const panes = new Map();
+    const collapsed = new Set();
+    let chosenAgent = 'codex';
+    let createPending = false;
+    let toastTimer;
+    let confirmAction = null;
+    let dialogReturnFocus = null;
+    let menuReturnFocus = null;
+    function node(tag, className, text) {
+      const result = document.createElement(tag);
+      if (className) result.className = className;
+      if (text !== undefined) result.textContent = text;
+      return result;
+    }
+    function toast(message) {
+      clearTimeout(toastTimer);
+      element('toast').textContent = message; element('toast').hidden = false;
+      toastTimer = setTimeout(() => { element('toast').hidden = true; }, 3000);
+    }
+    function saveView() {
+      const id = element('composer-input').dataset.sessionId;
+      if (!id || !engine.session(id)) return;
+      const runtime = engine.runtime(id);
+      runtime.draft = element('composer-input').value;
+      const pane = panes.get(id);
+      if (pane && !pane.hidden) { runtime.scrollTop = pane.scrollTop; captureScrollAnchor(pane); }
+    }
+    function captureScrollAnchor(pane) {
+      const children = pane.firstElementChild.children;
+      const viewportTop = pane.getBoundingClientRect().top;
+      let lower = 0;
+      let upper = children.length;
+      while (lower < upper) {
+        const middle = Math.floor((lower + upper) / 2);
+        if (children[middle].getBoundingClientRect().bottom <= viewportTop + 1) lower = middle + 1;
+        else upper = middle;
+      }
+      const anchor = children[lower];
+      pane.scrollAnchor = anchor ? { element: anchor, offset: anchor.getBoundingClientRect().top - viewportTop } : null;
+    }
+    function restoreScrollAnchor(pane) {
+      const anchor = pane.scrollAnchor;
+      if (!anchor) return;
+      if (anchor.element.isConnected) pane.scrollTop += anchor.element.getBoundingClientRect().top - pane.getBoundingClientRect().top - anchor.offset;
+      else pane.scrollTop = 0;
+    }
+    function closeSidebar() {
+      element('layout').classList.remove('sidebar-open');
+      element('show-projects').setAttribute('aria-expanded', 'false');
+    }
+    function activate(id) {
+      saveView(); closeMenu(false); engine.select(id); closeSidebar();
+    }
+    function renderTree() {
+      const focusedId = document.activeElement?.dataset.focusKey;
+      const tree = element('tree');
+      const search = element('search').value.trim().toLocaleLowerCase();
+      tree.replaceChildren();
+      let shown = 0;
+      for (const project of engine.workspace.projects) {
+        const sessions = engine.workspace.sessions.filter(session => session.projectId === project.id);
+        const projectMatches = `${project.name} ${project.rootPath}`.toLocaleLowerCase().includes(search);
+        const matching = sessions.filter(session => projectMatches || `${session.name} ${agents[session.agent].name}`.toLocaleLowerCase().includes(search));
+        if (!matching.length) continue;
+        shown++;
+        const isCollapsed = !search && collapsed.has(project.id);
+        const group = node('section', 'project'); group.dataset.projectId = project.id;
+        const heading = node('div', 'project-heading');
+        const toggle = node('button', 'project-toggle'); toggle.title = project.rootPath; toggle.dataset.focusKey = `project-${project.id}`;
+        toggle.setAttribute('aria-expanded', String(!isCollapsed));
+        toggle.append(node('span', 'muted', isCollapsed ? '▸' : '▾'), node('span', 'project-name', project.name), node('span', 'project-count', String(sessions.length)));
+        toggle.addEventListener('click', () => { collapsed.has(project.id) ? collapsed.delete(project.id) : collapsed.add(project.id); renderTree(); });
+        const add = node('button', 'quiet project-add', '+'); add.title = '在此项目中新建会话'; add.setAttribute('aria-label', `在 ${project.rootPath} 新建会话`); add.dataset.focusKey = `add-${project.id}`;
+        add.addEventListener('click', () => openCreate({ rootPath: project.rootPath }));
+        heading.append(toggle, add); group.append(heading);
+        if (engine.workspace.projects.filter(candidate => candidate.name === project.name).length > 1) group.append(node('div', 'project-parent', project.rootPath.slice(0, project.rootPath.lastIndexOf('\\'))));
+        if (!isCollapsed) {
+          if (sessions.length > 1) group.append(node('div', 'shared-side', '共用项目文件'));
+          for (const session of matching) {
+            const runtime = engine.runtime(session.id);
+            const button = node('button', `session${engine.workspace.activeSessionId === session.id ? ' active' : ''}`);
+            button.dataset.sessionId = session.id; button.dataset.focusKey = session.id;
+            button.title = `${agents[session.agent].name} · ${session.name}\n${project.rootPath}${session.launchOnOpen ? '\n随应用启动' : ''}`;
+            if (engine.workspace.activeSessionId === session.id) button.setAttribute('aria-current', 'true');
+            const copy = node('span', 'session-text');
+            const agentName = node('span', 'session-agent', agents[session.agent].name);
+            if (runtime.unread) { const unread = node('span', 'unread'); unread.setAttribute('aria-label', '有新输出'); agentName.append(unread); }
+            copy.append(agentName, node('span', 'session-name', session.name));
+            button.append(node('span', `agent-icon ${session.agent}`, agents[session.agent].icon), copy, node('span', `session-state ${runtime.status}`, statusNames[runtime.status]));
+            button.addEventListener('click', () => activate(session.id)); group.append(button);
+          }
+        }
+        tree.append(group);
+      }
+      if (!shown) tree.append(node('div', 'empty-search', search ? '没有匹配的项目或会话' : '还没有会话\n点击「新建会话」开始'));
+      element('tree-count').textContent = `${engine.workspace.projects.length} 个项目 · ${engine.workspace.sessions.length} 个会话`;
+      if (focusedId) [...tree.querySelectorAll('[data-focus-key]')].find(button => button.dataset.focusKey === focusedId)?.focus({ preventScroll: true });
+    }
+    function lineNode(entry) {
+      const line = node('div', `line ${entry.kind}`);
+      line.append(node('span', 'line-time', entry.time), node('span', '', entry.text));
+      return line;
+    }
+    function ensurePane(id) {
+      if (panes.has(id)) return panes.get(id);
+      const pane = node('div', 'terminal'); pane.tabIndex = 0; pane.hidden = true; pane.dataset.terminalId = id; pane.setAttribute('aria-label', `${engine.session(id).name} 的模拟终端输出`);
+      const lines = node('div', 'terminal-lines');
+      for (const entry of engine.runtime(id).lines) lines.append(lineNode(entry));
+      pane.append(lines);
+      pane.addEventListener('scroll', () => {
+        if (pane.hidden) return;
+        const runtime = engine.runtime(id);
+        runtime.scrollTop = pane.scrollTop;
+        runtime.follow = pane.scrollHeight - pane.clientHeight - pane.scrollTop < 30;
+        if (!runtime.follow) captureScrollAnchor(pane);
+        updateLatest();
+      });
+      panes.set(id, pane); element('terminal-panes').append(pane);
+      return pane;
+    }
+    function appendOutput(id, entry) {
+      if (!panes.has(id)) { ensurePane(id); return; }
+      const pane = panes.get(id);
+      const runtime = engine.runtime(id);
+      const lines = pane.firstElementChild;
+      if (!pane.hidden && !runtime.follow) captureScrollAnchor(pane);
+      lines.append(lineNode(entry));
+      if (lines.childElementCount > 5000) {
+        lines.firstElementChild.remove();
+      }
+      if (!pane.hidden) {
+        if (runtime.follow) pane.scrollTop = pane.scrollHeight;
+        else { restoreScrollAnchor(pane); runtime.scrollTop = pane.scrollTop; }
+      }
+      updateLatest();
+    }
+    function updateLatest() {
+      const id = engine.workspace.activeSessionId;
+      element('latest').hidden = !id || engine.runtime(id).follow;
+    }
+    function renderActive() {
+      const session = engine.session(engine.workspace.activeSessionId);
+      const empty = !session;
+      for (const id of ['workspace-head', 'context-strip', 'terminal-area', 'composer']) element(id).hidden = empty;
+      element('empty-workspace').hidden = !empty;
+      for (const [id, pane] of panes) pane.hidden = id !== session?.id;
+      if (!session) { element('runtime-error').hidden = true; element('status-summary').textContent = 'AgentDock Mock · 尚无会话'; return; }
+      const runtime = engine.runtime(session.id);
+      const project = engine.project(session.projectId);
+      const pane = ensurePane(session.id); pane.hidden = false;
+      pane.scrollTop = runtime.follow ? pane.scrollHeight : runtime.scrollTop;
+      if (!runtime.follow) { restoreScrollAnchor(pane); runtime.scrollTop = pane.scrollTop; }
+      element('active-icon').className = `agent-icon ${session.agent}`;
+      element('active-icon').textContent = agents[session.agent].icon;
+      element('active-tool').textContent = agents[session.agent].name + ' ';
+      element('active-name').textContent = session.name;
+      element('active-path').textContent = project.rootPath; element('active-path').title = project.rootPath;
+      element('active-status').textContent = statusNames[runtime.status]; element('active-status').className = `status-pill ${runtime.status}`;
+      const active = ['starting', 'running', 'stopping'].includes(runtime.status);
+      element('toggle-run').textContent = runtime.status === 'stopping' ? '停止中…' : active ? '停止终端' : '启动终端';
+      element('toggle-run').disabled = runtime.status === 'stopping';
+      element('composer-input').dataset.sessionId = session.id;
+      element('composer-input').value = runtime.draft;
+      element('composer-input').disabled = runtime.status !== 'running';
+      element('composer-input').placeholder = runtime.status === 'running' ? '输入模拟指令，体验独立会话…' : '先启动此模拟终端，再发送指令';
+      element('send').disabled = runtime.status !== 'running' || !runtime.draft.trim();
+      element('launch-on-open').checked = session.launchOnOpen;
+      element('remove-session').textContent = active ? '停止并移除会话' : '移除会话';
+      element('remove-session').disabled = runtime.status === 'stopping';
+      element('fail-stop').disabled = !['starting', 'running'].includes(runtime.status);
+      element('simulate-exit').disabled = !['starting', 'running'].includes(runtime.status);
+      element('shared-note').hidden = engine.workspace.sessions.filter(candidate => candidate.projectId === project.id).length < 2;
+      element('runtime-error').textContent = runtime.error; element('runtime-error').hidden = !runtime.error;
+      element('status-summary').textContent = `${statusNames[runtime.status]} · ${agents[session.agent].name} · ${project.name} · 模拟`;
+      updateLatest();
+    }
+    function renderSave() {
+      element('storage-warning').hidden = !engine.saveError;
+      element('storage-message').textContent = engine.saveError;
+      element('save-state').textContent = engine.saveError ? '配置未保存' : '配置已保存';
+      element('save-state').style.color = engine.saveError ? '#f0b78c' : '';
+    }
+    function renderCounts() {
+      const count = engine.workspace.sessions.filter(session => engine.runtime(session.id).status === 'running').length;
+      element('running-count').textContent = `${count} 个模拟终端运行中`;
+    }
+    engine.onChange = event => {
+      if (event.type === 'saved') { renderSave(); return; }
+      if (event.type === 'output') {
+        appendOutput(event.id, event.entry);
+        if (event.id !== engine.workspace.activeSessionId) renderTree();
+        return;
+      }
+      if (event.type === 'removed') { panes.get(event.id)?.remove(); panes.delete(event.id); }
+      renderTree(); renderCounts();
+      if (event.type !== 'status' || event.id === engine.workspace.activeSessionId) renderActive();
+      if (event.type === 'status') element('announcer').textContent = `${engine.session(event.id)?.name || ''}：${statusNames[engine.runtime(event.id).status]}`;
+    };
+    function closeMenu(restoreFocus = true) {
+      if (element('menu').hidden) return;
+      element('menu').hidden = true; element('session-menu').setAttribute('aria-expanded', 'false');
+      if (restoreFocus) menuReturnFocus?.focus({ preventScroll: true });
+    }
+    function chooseAgent(agent) {
+      chosenAgent = agent;
+      for (const button of document.querySelectorAll('[data-agent]')) button.setAttribute('aria-pressed', String(button.dataset.agent === agent));
+    }
+    function directorySharing() {
+      let count = 0;
+      try {
+        const path = engine.normalizePath(element('directory').value);
+        const project = engine.workspace.projects.find(project => project.pathKey === path);
+        count = project ? engine.workspace.sessions.filter(session => session.projectId === project.id).length : 0;
+      } catch {}
+      element('directory-sharing').textContent = `此目录已有 ${count} 个会话，新会话将共用项目文件。`;
+      element('directory-sharing').hidden = !count;
+    }
+    function openCreate({ rootPath = '', agent = 'codex' } = {}) {
+      saveView(); dialogReturnFocus = document.activeElement; closeMenu(false);
+      chooseAgent(agent); createPending = false;
+      element('directory').value = rootPath; element('session-name').value = ''; element('create-auto').checked = true;
+      element('create-error').textContent = ''; element('create-submit').disabled = false;
+      element('directory-options').hidden = true; element('pick-directory').setAttribute('aria-expanded', 'false');
+      directorySharing(); element('create-dialog').showModal();
+      element(rootPath ? 'session-name' : 'directory').focus();
+    }
+    function closeCreate() {
+      element('create-dialog').close();
+      if (dialogReturnFocus?.isConnected) dialogReturnFocus.focus({ preventScroll: true });
+      else element('new-session').focus();
+    }
+    function askConfirm({ title, copy, accept, action }) {
+      dialogReturnFocus = document.activeElement; closeMenu(false);
+      element('confirm-title').textContent = title; element('confirm-copy').textContent = copy; element('accept-confirm').textContent = accept;
+      confirmAction = action; element('confirm-dialog').showModal(); element('cancel-confirm').focus();
+    }
+    function closeConfirm() {
+      element('confirm-dialog').close(); confirmAction = null;
+      if (dialogReturnFocus?.isConnected) dialogReturnFocus.focus({ preventScroll: true });
+    }
+    element('new-session').addEventListener('click', () => openCreate());
+    element('new-first').addEventListener('click', () => openCreate());
+    element('close-create').addEventListener('click', closeCreate); element('cancel-create').addEventListener('click', closeCreate);
+    element('create-dialog').addEventListener('cancel', event => { event.preventDefault(); closeCreate(); });
+    for (const button of document.querySelectorAll('[data-agent]')) button.addEventListener('click', () => chooseAgent(button.dataset.agent));
+    element('directory').addEventListener('input', directorySharing);
+    element('pick-directory').addEventListener('click', () => {
+      const options = element('directory-options'); options.hidden = !options.hidden;
+      element('pick-directory').setAttribute('aria-expanded', String(!options.hidden));
+      if (options.hidden) return;
+      options.replaceChildren();
+      const paths = new Set([...engine.workspace.projects.map(project => project.rootPath), 'D:\\Projects\\website', 'D:\\Projects\\content-tools', 'E:\\我的项目\\演示 空间\\新工作台']);
+      for (const path of paths) {
+        const button = node('button', '', path); button.type = 'button'; button.title = path;
+        button.addEventListener('click', () => { element('directory').value = path; options.hidden = true; element('pick-directory').setAttribute('aria-expanded', 'false'); directorySharing(); element('session-name').focus(); });
+        options.append(button);
+      }
+    });
+    element('create-form').addEventListener('submit', async event => {
+      event.preventDefault(); if (createPending) return;
+      createPending = true; element('create-submit').disabled = true;
+      try {
+        await Promise.resolve();
+        const session = engine.create({ agent: chosenAgent, rootPath: element('directory').value, name: element('session-name').value, launchOnOpen: element('create-auto').checked });
+        element('search').value = ''; collapsed.delete(session.projectId); engine.start(session.id);
+        closeCreate(); closeSidebar(); renderTree(); element('toggle-run').focus();
+        toast('模拟会话已创建，未启动真实 CLI');
+      } catch (error) { element('create-error').textContent = error.message; }
+      finally { createPending = false; element('create-submit').disabled = false; }
+    });
+    element('search').addEventListener('input', renderTree);
+    element('start-all').addEventListener('click', () => { engine.startAll(); toast('已启动未运行的模拟会话；运行中会话保持原运行'); });
+    element('session-menu').addEventListener('click', () => {
+      if (!element('menu').hidden) { closeMenu(); return; }
+      menuReturnFocus = document.activeElement; element('menu').hidden = false; element('session-menu').setAttribute('aria-expanded', 'true'); element('launch-on-open').focus();
+    });
+    document.addEventListener('click', event => { if (!event.target.closest('.menu-wrap')) closeMenu(false); });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !element('menu').hidden) { event.preventDefault(); closeMenu(); }
+      else if (event.key === 'Escape' && element('layout').classList.contains('sidebar-open')) { closeSidebar(); element('show-projects').focus(); }
+    });
+    element('launch-on-open').addEventListener('change', event => engine.setLaunchOnOpen(engine.workspace.activeSessionId, event.target.checked));
+    element('other-directory').addEventListener('click', () => { const session = engine.session(engine.workspace.activeSessionId); if (session) openCreate({ agent: session.agent }); });
+    element('toggle-run').addEventListener('click', () => {
+      const session = engine.session(engine.workspace.activeSessionId); if (!session) return;
+      if (['starting', 'running'].includes(engine.runtime(session.id).status)) askConfirm({ title: '停止此终端？', copy: `停止将结束此终端中的任务。\n「${session.name}」的本次模拟输出会保留，随应用启动选项保持。`, accept: '停止终端', action: async () => { const stopped = await engine.stop(session.id); toast(stopped ? '模拟终端已停止' : '模拟停止失败，终端仍保留'); } });
+      else engine.start(session.id);
+    });
+    element('remove-session').addEventListener('click', () => {
+      const session = engine.session(engine.workspace.activeSessionId); if (!session) return;
+      const active = ['starting', 'running'].includes(engine.runtime(session.id).status);
+      askConfirm({ title: active ? '停止并移除此会话？' : '移除此会话？', copy: `${active ? '停止将结束此终端中的任务，退出成功后才移除配置。\n' : ''}将移除「${session.name}」及本次页面中的模拟输出。\n不删除任何项目文件。`, accept: active ? '停止并移除' : '移除会话', action: async () => { const removed = await engine.remove(session.id); toast(removed ? '会话已移除，项目文件未改动' : '模拟停止失败，会话配置仍保留'); if (removed) (engine.workspace.activeSessionId ? element('toggle-run') : element('new-first')).focus(); } });
+    });
+    element('cancel-confirm').addEventListener('click', closeConfirm);
+    element('confirm-dialog').addEventListener('cancel', event => { event.preventDefault(); closeConfirm(); });
+    element('accept-confirm').addEventListener('click', async () => { const action = confirmAction; closeConfirm(); if (action) await action(); });
+    element('fail-start').addEventListener('click', () => { engine.runtime(engine.workspace.activeSessionId).failNextStart = true; closeMenu(); toast('下次启动此会话将模拟失败（刷新后不保留）'); });
+    element('fail-stop').addEventListener('click', () => { engine.runtime(engine.workspace.activeSessionId).failNextStop = true; closeMenu(); toast('下次停止此会话将模拟失败（刷新后不保留）'); });
+    element('simulate-exit').addEventListener('click', () => { const id = engine.workspace.activeSessionId; closeMenu(); engine.exit(id, engine.runtime(id).runId, 1); });
+    element('copy-path').addEventListener('click', async () => {
+      const session = engine.session(engine.workspace.activeSessionId); if (!session) return;
+      const path = engine.project(session.projectId).rootPath;
+      try { await navigator.clipboard.writeText(path); toast('完整项目路径已复制'); }
+      catch { toast('浏览器未允许复制，可选中顶栏路径手动复制'); }
+    });
+    element('composer-input').addEventListener('input', event => {
+      const id = engine.workspace.activeSessionId;
+      if (id) engine.runtime(id).draft = event.target.value;
+      element('send').disabled = !id || engine.runtime(id).status !== 'running' || !event.target.value.trim();
+    });
+    element('composer-input').addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && event.keyCode !== 229) { event.preventDefault(); element('composer').requestSubmit(); }
+    });
+    element('composer').addEventListener('submit', event => {
+      event.preventDefault();
+      const id = engine.workspace.activeSessionId;
+      if (id && engine.send(id, element('composer-input').value)) {
+        element('composer-input').value = ''; element('send').disabled = true;
+        const runtime = engine.runtime(id);
+        if (runtime.follow) panes.get(id).scrollTop = panes.get(id).scrollHeight;
+      }
+    });
+    element('latest').addEventListener('click', () => {
+      const id = engine.workspace.activeSessionId;
+      if (!id) return;
+      engine.runtime(id).follow = true; const pane = panes.get(id); pane.scrollTop = pane.scrollHeight;
+      updateLatest(); pane.focus({ preventScroll: true });
+    });
+    element('retry-save').addEventListener('click', () => { engine.save(); toast(engine.saveError || '配置已保存'); });
+    element('show-projects').addEventListener('click', () => { element('layout').classList.add('sidebar-open'); element('show-projects').setAttribute('aria-expanded', 'true'); element('new-session').focus(); });
+    element('hide-projects').addEventListener('click', closeSidebar); element('close-sidebar').addEventListener('click', () => { closeSidebar(); element('show-projects').focus(); });
+    window.addEventListener('beforeunload', event => {
+      if (engine.saveError) { event.preventDefault(); event.returnValue = ''; }
+    });
+    renderTree(); renderActive(); renderSave(); renderCounts(); engine.startAuto();
+  </script>
+</body>
+</html>

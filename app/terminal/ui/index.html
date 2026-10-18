@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgentDock · CLI 终端</title>
+  <link rel="stylesheet" href="/vendor/xterm.css">
+  <link rel="stylesheet" href="/style.css">
+  <script defer src="/vendor/xterm.js"></script>
+  <script defer src="/vendor/addon-fit.js"></script>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <header class="toolbar">
+    <div class="identity">
+      <strong>AgentDock</strong>
+      <span class="agent-label" id="agent-label">Codex</span>
+    </div>
+    <div class="directory" id="directory" title=""></div>
+    <div class="controls">
+      <span id="status" role="status" aria-live="polite">连接中</span>
+      <button id="start" class="primary" type="button" disabled>启动 Codex</button>
+      <button id="stop" type="button" disabled>停止</button>
+    </div>
+  </header>
+  <nav class="session-tabs" role="tablist" aria-label="CLI 终端">
+    <button id="tab-codex" class="session-tab active" type="button" role="tab" aria-selected="true" aria-controls="terminal-codex" data-session-id="codex">
+      <span>Codex</span><span class="tab-status" data-status-for="codex">未启动</span>
+    </button>
+    <button id="tab-agy" class="session-tab" type="button" role="tab" aria-selected="false" aria-controls="terminal-agy" data-session-id="agy">
+      <span>Antigravity</span><span class="tab-status" data-status-for="agy">未启动</span>
+    </button>
+    <button id="tab-claude" class="session-tab" type="button" role="tab" aria-selected="false" aria-controls="terminal-claude" data-session-id="claude">
+      <span>Claude Code</span><span class="tab-status" data-status-for="claude">未启动</span>
+    </button>
+  </nav>
+  <main id="terminals" aria-label="终端会话">
+    <section id="terminal-codex" class="terminal-panel active" role="tabpanel" aria-labelledby="tab-codex"></section>
+    <section id="terminal-agy" class="terminal-panel" role="tabpanel" aria-labelledby="tab-agy" hidden></section>
+    <section id="terminal-claude" class="terminal-panel" role="tabpanel" aria-labelledby="tab-claude" hidden></section>
+  </main>
+  <div class="workspace-warning" role="note">三个终端共享此工作目录；同时运行时可能修改同一文件。</div>
+  <div id="notice" class="notice" role="alert" hidden></div>
+</body>
+</html>

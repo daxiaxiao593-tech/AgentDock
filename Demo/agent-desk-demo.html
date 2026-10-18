@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#11131b">
+  <title>Agent Desk — 本地交互 Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #11131b;
+      --sidebar: #151722;
+      --surface: #1a1d29;
+      --surface-raised: #212534;
+      --surface-active: #2a3041;
+      --border: #2b2f3e;
+      --border-subtle: #232634;
+      --text: #e7e8ef;
+      --muted: #858b9c;
+      --dim: #606678;
+      --blue: #91b4ff;
+      --green: #83dbad;
+      --orange: #f3b77e;
+      --purple: #c3a6ff;
+      --sans: "Segoe UI", "Microsoft YaHei UI", sans-serif;
+      --mono: "Cascadia Code", "SFMono-Regular", Consolas, "Microsoft YaHei UI", monospace;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+    * { box-sizing: border-box; }
+    body { min-width: 320px; height: 100dvh; margin: 0; overflow: hidden; background: var(--bg); }
+    button, input, textarea, select { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .app { display: grid; grid-template-rows: 44px minmax(0, 1fr); height: 100dvh; }
+    .titlebar { display: flex; align-items: center; gap: 13px; padding: 0 15px; border-bottom: 1px solid #252938; background: #12141d; user-select: none; }
+    .window-dots { display: flex; gap: 7px; padding-right: 4px; }
+    .window-dot { width: 11px; height: 11px; border-radius: 50%; background: #464b59; }
+    .window-dot:first-child { background: #f07176; }
+    .window-dot:nth-child(2) { background: #e4bd63; }
+    .window-dot:nth-child(3) { background: #57c58c; }
+    .title-brand { font-size: 13px; font-weight: 680; letter-spacing: .02em; }
+    .title-brand span { margin-right: 5px; color: var(--blue); font-family: var(--mono); font-size: 15px; }
+    .title-divider { height: 16px; border-left: 1px solid var(--border); }
+    .demo-tag { border: 1px solid #594a30; border-radius: 999px; padding: 3px 8px; color: #e5bd7b; background: #29251f; font-size: 10px; letter-spacing: .02em; }
+    .title-spacer { flex: 1; }
+    .title-meta { color: var(--muted); font: 11px var(--mono); }
+    .title-meta strong { color: #d1d5e0; font-weight: 500; }
+    .app-grid { display: grid; min-height: 0; grid-template-columns: 276px minmax(0, 1fr); }
+    .sidebar { display: flex; min-height: 0; flex-direction: column; border-right: 1px solid var(--border); background: var(--sidebar); }
+    .workspace-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 16px 12px; }
+    .workspace-title { font-size: 13px; font-weight: 650; }
+    .workspace-subtitle { margin-top: 4px; color: var(--muted); font-size: 10px; }
+    .icon-btn { display: inline-grid; width: 30px; height: 30px; place-items: center; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #b1b7c7; cursor: pointer; }
+    .icon-btn:hover { border-color: var(--border); background: #212532; color: var(--text); }
+    .icon-btn svg { width: 15px; height: 15px; }
+    .side-controls { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 7px; padding: 0 12px 13px; }
+    .searchbox { display: flex; min-width: 0; align-items: center; gap: 8px; padding: 0 9px; border: 1px solid var(--border); border-radius: 7px; background: #11131b; color: var(--muted); }
+    .searchbox svg { width: 14px; height: 14px; flex: none; }
+    .searchbox input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 11px; }
+    .searchbox input::placeholder { color: #74798a; }
+    .section-label { display: flex; align-items: center; justify-content: space-between; padding: 5px 13px 8px; color: #878d9e; font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
+    .section-count { border-radius: 999px; padding: 2px 6px; background: #232736; color: #aeb4c3; font: 10px var(--mono); }
+    .tree { min-height: 0; flex: 1; overflow: auto; padding: 0 8px 12px; scrollbar-color: #414657 transparent; scrollbar-width: thin; }
+    .project { margin-bottom: 4px; }
+    .project-head { display: flex; min-height: 35px; align-items: center; gap: 7px; padding: 0 5px; border-radius: 6px; cursor: pointer; }
+    .project-head:hover { background: #202330; }
+    .chevron { display: grid; width: 13px; place-items: center; color: #747b8c; transition: transform .15s; }
+    .project.is-collapsed .chevron { transform: rotate(-90deg); }
+    .folder-icon { color: #a9b8d4; }
+    .folder-icon svg { display: block; width: 15px; height: 15px; }
+    .project-name { min-width: 0; flex: 1; overflow: hidden; color: #e0e3eb; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .project-branch { max-width: 70px; overflow: hidden; border-radius: 999px; padding: 2px 6px; background: #302634; color: #e4a3bf; font: 9px var(--mono); text-overflow: ellipsis; }
+    .project-body { position: relative; margin-left: 12px; padding: 2px 0 5px 11px; border-left: 1px solid #34394b; }
+    .project.is-collapsed .project-body { display: none; }
+    .project-path { display: flex; overflow: hidden; align-items: center; gap: 5px; padding: 2px 4px 7px; color: #6f7587; font: 9px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+    .session { position: relative; display: flex; min-height: 42px; align-items: flex-start; gap: 8px; margin: 1px 0 2px -6px; padding: 7px 6px 6px 9px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; }
+    .session:hover { background: #1e222f; }
+    .session.active { border-color: #39425b; background: #2a3040; box-shadow: inset 2px 0 #91b4ff; }
+    .agent-mark { display: grid; width: 16px; height: 16px; flex: none; place-items: center; margin-top: 1px; border: 1px solid #4a5060; border-radius: 5px; background: #252a38; color: var(--blue); font: 9px var(--mono); font-weight: 700; }
+    .agent-mark.codex { color: #b9c8e4; }
+    .agent-mark.claude { color: #f4b987; }
+    .agent-mark.agy { color: #a5d9bb; }
+    .session-copy { min-width: 0; flex: 1; }
+    .session-firstline { display: flex; min-width: 0; align-items: center; gap: 6px; }
+    .session-tool { overflow: hidden; color: #dfe2eb; font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .status-dot { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px #83dbad55; }
+    .status-dot.working { background: #e8b76f; box-shadow: 0 0 8px #e8b76f66; animation: pulse 1.2s infinite; }
+    .status-dot.waiting { background: var(--purple); box-shadow: 0 0 8px #c3a6ff66; }
+    .session-status { color: #aab0bf; font-size: 9px; }
+    .session-label { display: block; overflow: hidden; margin-top: 4px; color: #a5abbb; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .session-clock { margin-left: auto; color: #767c8f; font: 9px var(--mono); }
+    .side-footer { display: flex; align-items: center; gap: 9px; padding: 12px 14px; border-top: 1px solid var(--border-subtle); color: #8b91a2; font-size: 10px; }
+    .local-mark { width: 7px; height: 7px; border-radius: 50%; background: #77c796; box-shadow: 0 0 8px #77c79666; }
+    .side-footer .muted-right { margin-left: auto; color: #656b7b; }
+    .main { display: flex; min-width: 0; min-height: 0; flex-direction: column; background: #11131b; }
+    .repo-bar { display: flex; min-height: 47px; align-items: center; gap: 11px; padding: 0 19px; border-bottom: 1px solid var(--border-subtle); background: #151722; }
+    .repo-mark { display: grid; width: 21px; height: 21px; flex: none; place-items: center; border: 1px solid #394153; border-radius: 6px; color: #bac5dc; font: 12px var(--mono); }
+    .repo-name { overflow: hidden; color: #e0e3eb; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .repo-branch { color: #9eb2d9; font: 11px var(--mono); }
+    .repo-spacer { flex: 1; }
+    .folder-chip { display: flex; max-width: 36%; align-items: center; gap: 6px; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; background: #191c27; color: #aab0c0; cursor: pointer; }
+    .folder-chip:hover { border-color: #505b73; color: var(--text); }
+    .folder-chip svg { width: 13px; height: 13px; flex: none; }
+    .folder-chip span { overflow: hidden; font: 10px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+    .repo-divider { height: 15px; border-left: 1px solid var(--border); }
+    .terminal-state { display: inline-flex; align-items: center; gap: 6px; color: #9da3b2; font-size: 10px; white-space: nowrap; }
+    .terminal-state .status-dot { width: 6px; height: 6px; }
+    .terminal-tools { display: flex; align-items: center; gap: 4px; }
+    .terminal-tools .icon-btn { width: 27px; height: 27px; }
+    .terminal-body { position: relative; min-height: 0; flex: 1; overflow: auto; padding: clamp(22px, 4vh, 43px) clamp(20px, 4vw, 58px) 32px; scrollbar-color: #414657 transparent; scrollbar-width: thin; }
+    .terminal-content { width: min(100%, 1040px); margin: 0 auto; font: 13px/1.9 var(--mono); letter-spacing: .005em; }
+    .term-command { display: flex; align-items: baseline; gap: 9px; color: #ced3df; }
+    .term-prompt { color: #91b4ff; }
+    .term-command-text { color: #e3e6ef; }
+    .term-result { margin: 8px 0 21px 19px; color: #afb5c6; }
+    .file-change { display: grid; grid-template-columns: 21px minmax(150px, 1fr) auto auto; gap: 10px; align-items: baseline; color: #c4c9d5; }
+    .file-state { color: #f0c477; }
+    .file-added { color: var(--green); }
+    .file-removed { color: #e7909c; }
+    .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-stat { color: #8e96a9; font-size: 11px; }
+    .terminal-rule { height: 1px; margin: 24px 0; border: 0; background: linear-gradient(90deg, #343849, #343849aa, transparent); }
+    .term-heading { margin: 0 0 12px; color: #8f96aa; font-size: 12px; }
+    .term-message { margin: 0 0 22px; color: #d9dce5; font: 15px/1.85 var(--sans); }
+    .commit-title { margin: 11px 0 13px; color: #9de1b5; font: 15px/1.6 var(--mono); }
+    .term-copy { margin: 0 0 17px; color: #c2c7d3; font: 14px/1.85 var(--sans); }
+    .term-commit { margin: 8px 0 18px 20px; color: #e4e7ef; }
+    .term-commit .hash { color: #93dca8; }
+    .recap { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 8px; margin-top: 22px; padding: 14px 16px; border: 1px solid #2b3040; border-radius: 8px; background: #171a24; }
+    .recap-label { color: #b0a2ce; font-weight: 700; }
+    .recap-copy { color: #9da4b4; font: 13px/1.8 var(--sans); }
+    .chat-list { display: grid; gap: 18px; margin: 19px 0; }
+    .chat-user { width: fit-content; max-width: min(84%, 720px); margin-left: auto; border: 1px solid #343a4b; border-radius: 11px 11px 3px 11px; padding: 10px 14px; background: #202434; color: #dce1eb; font: 13px/1.75 var(--sans); white-space: pre-wrap; overflow-wrap: anywhere; }
+    .chat-assistant { display: flex; max-width: 850px; align-items: flex-start; gap: 10px; color: #c8cdd8; font: 13px/1.85 var(--sans); }
+    .chat-assistant .agent-mark { margin-top: 2px; }
+    .chat-assistant-copy { min-width: 0; }
+    .chat-assistant-copy p { margin: 0 0 9px; }
+    .chat-assistant-copy code { border: 1px solid #33394a; border-radius: 4px; padding: 1px 5px; background: #191c27; color: #b8caee; font: 11px var(--mono); }
+    .inline-result { margin: 8px 0 10px; border: 1px solid #303646; border-radius: 7px; padding: 9px 11px; background: #171a24; color: #aeb5c5; font: 11px/1.75 var(--mono); }
+    .inline-result .ok { color: var(--green); }
+    .activity-line { margin: 22px 0 20px; color: #737b8d; font: 10px var(--mono); }
+    .dynamic-message { animation: fade-in .25s ease-out; }
+    .working-line { color: #e3b872; }
+    .composer-wrap { padding: 0 20px 11px; background: linear-gradient(180deg, transparent, #11131b 18px); }
+    .composer { width: min(100%, 1120px); margin: 0 auto; border: 1px solid #3a3e4c; border-radius: 10px; background: #202330; box-shadow: 0 7px 26px #0003; }
+    .composer:focus-within { border-color: #646e85; box-shadow: 0 0 0 1px #91b4ff20, 0 7px 26px #0003; }
+    .composer textarea { display: block; width: 100%; min-height: 54px; max-height: 140px; resize: vertical; border: 0; outline: 0; border-radius: 10px 10px 0 0; padding: 14px 15px 6px; background: transparent; color: #e6e8ef; font-size: 13px; line-height: 1.6; }
+    .composer textarea::placeholder { color: #8a90a1; }
+    .composer-foot { display: flex; align-items: center; gap: 8px; padding: 5px 9px 8px; }
+    .composer-hint { margin-left: 4px; color: #767d8d; font-size: 10px; }
+    .composer-spacer { flex: 1; }
+    .key-hint { color: #757b8b; font: 10px var(--mono); }
+    .send-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #7c9ad4; border-radius: 6px; padding: 6px 10px; background: #8eaddf; color: #151924; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .send-btn:hover { background: #a5bff0; }
+    .send-btn:disabled { opacity: .55; cursor: wait; }
+    .send-btn svg { width: 13px; height: 13px; }
+    .statusbar { display: flex; min-height: 26px; align-items: center; gap: 12px; padding: 0 16px; border-top: 1px solid #2a2e3b; background: #171a24; color: #a1a8b8; font: 10px var(--mono); }
+    .statusbar .status-spacer { flex: 1; }
+    .statusbar .brand-status { color: #8ed8a7; }
+    .statusbar .model-status { color: #d1c0f1; }
+    .statusbar .counts { color: #aab3c6; }
+    .dialog-backdrop { position: fixed; z-index: 10; inset: 0; display: grid; place-items: center; padding: 20px; background: #080a10bd; backdrop-filter: blur(4px); }
+    .dialog-backdrop[hidden] { display: none; }
+    .dialog { width: min(100%, 520px); max-height: min(92dvh, 720px); overflow: auto; border: 1px solid #414658; border-radius: 12px; background: #1a1d28; box-shadow: 0 22px 80px #0009; }
+    .dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 19px 20px 15px; border-bottom: 1px solid var(--border); }
+    .dialog-title { margin: 0; color: #edf0f6; font-size: 15px; font-weight: 660; }
+    .dialog-subtitle { margin: 5px 0 0; color: #949bad; font-size: 11px; line-height: 1.5; }
+    .dialog-content { display: grid; gap: 17px; padding: 18px 20px; }
+    .form-label { display: block; margin-bottom: 7px; color: #b9bfcc; font-size: 11px; font-weight: 600; }
+    .agent-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .agent-choice { display: flex; min-height: 48px; align-items: center; gap: 8px; border: 1px solid #333849; border-radius: 7px; padding: 8px; background: #171a24; color: #c8cdd8; font-size: 11px; cursor: pointer; }
+    .agent-choice:hover { border-color: #59637a; }
+    .agent-choice.selected { border-color: #829dce; background: #232a39; color: #f0f3fa; box-shadow: 0 0 0 1px #91b4ff22; }
+    .agent-choice .agent-mark { width: 19px; height: 19px; }
+    .form-select, .path-input { width: 100%; min-height: 36px; border: 1px solid #3a3f50; border-radius: 7px; padding: 0 10px; background: #12151e; color: #e2e5ed; font-size: 11px; }
+    .folder-select-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+    .browse-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #414758; border-radius: 7px; padding: 0 10px; background: #222634; color: #d4d9e4; font-size: 10px; cursor: pointer; }
+    .browse-btn:hover { border-color: #68748e; background: #2a3040; }
+    .browse-btn svg { width: 13px; height: 13px; }
+    .folder-note { margin: 7px 0 0; color: #797f90; font-size: 10px; line-height: 1.55; }
+    .dialog-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 13px 20px 17px; border-top: 1px solid var(--border); }
+    .secondary-btn, .primary-btn { min-height: 34px; border-radius: 7px; padding: 0 12px; font-size: 11px; cursor: pointer; }
+    .secondary-btn { border: 1px solid #414658; background: transparent; color: #c4c9d5; }
+    .secondary-btn:hover { background: #252a38; }
+    .primary-btn { border: 1px solid #809bce; background: #91b4ff; color: #171b25; font-weight: 700; }
+    .primary-btn:hover { background: #adc7fb; }
+    .toast { position: fixed; z-index: 20; right: 18px; bottom: 45px; max-width: min(380px, calc(100vw - 36px)); border: 1px solid #474e60; border-radius: 8px; padding: 10px 13px; background: #252a37; color: #e1e5ee; box-shadow: 0 10px 35px #0006; font-size: 11px; animation: fade-in .18s ease-out; }
+    .toast[hidden] { display: none; }
+    .empty-search { padding: 19px 10px; color: #858b9a; font-size: 11px; text-align: center; }
+    @keyframes pulse { 50% { opacity: .45; } }
+    @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 760px) {
+      .app-grid { grid-template-columns: 220px minmax(0, 1fr); }
+      .title-meta { display: none; }
+      .repo-bar { gap: 7px; padding: 0 10px; }
+      .repo-divider { display: none; }
+      .terminal-state { display: none; }
+      .folder-chip { max-width: 43%; }
+      .terminal-tools .icon-btn:first-child { display: none; }
+      .terminal-body { padding: 20px 16px 26px; }
+      .terminal-content { font-size: 11px; }
+      .term-message, .term-copy { font-size: 12px; }
+      .recap { grid-template-columns: 61px minmax(0, 1fr); padding: 10px; }
+      .recap-copy { font-size: 11px; }
+      .composer-wrap { padding-right: 12px; padding-left: 12px; }
+      .statusbar { gap: 7px; padding-right: 10px; padding-left: 10px; font-size: 9px; }
+    }
+    @media (max-width: 540px) {
+      .app-grid { grid-template-columns: 174px minmax(0, 1fr); }
+      .workspace-head { padding: 13px 10px 10px; }
+      .side-controls { grid-template-columns: minmax(0, 1fr) 29px; gap: 4px; padding-right: 7px; padding-left: 7px; }
+      .icon-btn { width: 28px; height: 28px; }
+      .project-head { gap: 4px; padding-right: 2px; padding-left: 2px; }
+      .project-branch { display: none; }
+      .project-name { font-size: 10px; }
+      .project-path { font-size: 8px; }
+      .project-body { margin-left: 8px; padding-left: 8px; }
+      .session { gap: 5px; padding-right: 3px; padding-left: 6px; }
+      .session-tool, .session-label { font-size: 9px; }
+      .session-status, .session-clock { display: none; }
+      .agent-mark { width: 14px; height: 14px; }
+      .workspace-subtitle { font-size: 9px; }
+      .repo-mark { display: none; }
+      .repo-name { font-size: 10px; }
+      .repo-branch { font-size: 9px; }
+      .folder-chip { max-width: 46%; padding: 4px 6px; }
+      .folder-chip span { font-size: 8px; }
+      .terminal-tools { gap: 0; }
+      .terminal-tools .icon-btn { width: 24px; }
+      .terminal-body { padding: 17px 10px 22px; }
+      .terminal-content { font-size: 10px; }
+      .term-result { margin-left: 12px; }
+      .file-change { grid-template-columns: 13px minmax(50px, 1fr) auto; gap: 5px; }
+      .file-stat { display: none; }
+      .term-message, .term-copy { font-size: 11px; }
+      .chat-user { max-width: 94%; font-size: 11px; }
+      .chat-assistant { gap: 6px; font-size: 11px; }
+      .recap { grid-template-columns: 48px minmax(0, 1fr); gap: 4px; padding: 8px; }
+      .recap-label, .recap-copy { font-size: 10px; }
+      .composer-hint, .key-hint { display: none; }
+      .statusbar { min-height: 24px; }
+      .statusbar .small-hide { display: none; }
+      .agent-choices { grid-template-columns: 1fr; }
+      .agent-choice { min-height: 38px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="titlebar">
+      <div class="window-dots" aria-hidden="true"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></div>
+      <div class="title-brand"><span>›_</span>agent desk</div>
+      <span class="title-divider"></span>
+      <span class="demo-tag">本地交互 Demo</span>
+      <span class="title-spacer"></span>
+      <div class="title-meta">会话 <strong id="top-session-count">5</strong>　·　演示数据　·　仅本地模拟</div>
+    </header>
+
+    <div class="app-grid">
+      <aside class="sidebar" aria-label="项目与会话">
+        <div class="workspace-head">
+          <div><div class="workspace-title">工作空间</div><div class="workspace-subtitle">项目与 AI 会话</div></div>
+          <button class="icon-btn" id="new-session-top" aria-label="新建会话" title="新建会话">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+        <div class="side-controls">
+          <label class="searchbox">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.8" cy="10.8" r="6.5"/><path d="m16 16 4.2 4.2"/></svg>
+            <input id="search-input" type="search" placeholder="搜索项目和会话" aria-label="搜索项目和会话">
+          </label>
+          <button class="icon-btn" id="new-session-small" aria-label="新增 AI 会话" title="新增会话">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+        <div class="section-label"><span>项目</span><span class="section-count" id="project-count">3</span></div>
+        <div class="tree" id="session-tree"></div>
+        <div class="side-footer"><span class="local-mark"></span><span>本机终端工作空间</span><span class="muted-right">Demo</span></div>
+      </aside>
+
+      <main class="main">
+        <div class="repo-bar">
+          <div class="repo-mark" aria-hidden="true">⌘</div>
+          <span class="repo-name" id="active-project-name">video-editor</span>
+          <span class="repo-branch" id="active-branch">main</span>
+          <span class="repo-spacer"></span>
+          <button class="folder-chip" id="change-folder" title="为当前会话选择项目文件夹">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 7.5A2 2 0 0 1 5.5 5.5h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M3.8 9.5h16.4"/></svg>
+            <span id="active-folder">D:\Projects\video-editor</span>
+          </button>
+          <span class="repo-divider"></span>
+          <span class="terminal-state"><span class="status-dot" id="active-status-dot"></span><span id="active-status-text">Ready</span></span>
+          <div class="terminal-tools">
+            <button class="icon-btn" id="copy-path" aria-label="复制项目路径" title="复制项目路径">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="8" y="8" width="11" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2"/></svg>
+            </button>
+            <button class="icon-btn" id="session-menu" aria-label="会话信息" title="会话信息">
+              <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <section class="terminal-body" id="terminal-scroll" aria-label="模拟 AI 终端">
+          <div class="terminal-content" id="terminal-content"></div>
+        </section>
+
+        <div class="composer-wrap">
+          <form class="composer" id="composer-form">
+            <textarea id="composer-input" placeholder="给当前会话发送消息…" aria-label="消息内容" rows="2"></textarea>
+            <div class="composer-foot">
+              <button type="button" class="icon-btn" id="attach-info" aria-label="演示信息" title="演示模式">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+              </button>
+              <span class="composer-hint">消息仅添加到模拟对话，不会调用 AI</span>
+              <span class="composer-spacer"></span><span class="key-hint">Enter 发送 · Shift+Enter 换行</span>
+              <button type="submit" class="send-btn" id="send-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                发送
+              </button>
+            </div>
+          </form>
+        </div>
+        <footer class="statusbar">
+          <span class="brand-status" id="status-tool">Codex</span><span id="status-project">video-editor</span><span class="small-hide">·</span><span class="small-hide" id="status-branch">main</span>
+          <span class="status-spacer"></span><span class="model-status" id="status-model">GPT-6.1-Sol high</span><span>·</span><span class="counts" id="status-counts">+918 · -54</span>
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <div class="dialog-backdrop" id="new-session-dialog" hidden>
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      <div class="dialog-head">
+        <div><h2 class="dialog-title" id="dialog-title">新建终端会话</h2><p class="dialog-subtitle">选择 AI 工具和它要进入的项目文件夹。</p></div>
+        <button class="icon-btn" id="close-dialog" aria-label="关闭">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <form id="session-form">
+        <div class="dialog-content">
+          <div>
+            <label class="form-label">选择 AI 终端</label>
+            <div class="agent-choices" id="agent-choices">
+              <button type="button" class="agent-choice selected" data-agent="Codex"><span class="agent-mark codex">C</span>Codex</button>
+              <button type="button" class="agent-choice" data-agent="Antigravity"><span class="agent-mark agy">A</span>Antigravity</button>
+              <button type="button" class="agent-choice" data-agent="Claude Code"><span class="agent-mark claude">✳</span>Claude Code</button>
+            </div>
+          </div>
+          <div>
+            <label class="form-label" for="project-select">项目</label>
+            <select class="form-select" id="project-select"></select>
+          </div>
+          <div>
+            <label class="form-label" for="folder-input">该会话的项目文件夹</label>
+            <div class="folder-select-row">
+              <input class="path-input" id="folder-input" type="text" value="D:\Projects\video-editor" spellcheck="false" required>
+              <button class="browse-btn" id="browse-folder" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3.5 7.5A2 2 0 0 1 5.5 5.5h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M3.8 9.5h16.4"/></svg>
+                选文件夹
+              </button>
+              <input id="folder-picker" type="file" webkitdirectory directory multiple hidden>
+            </div>
+            <p class="folder-note">Demo 演示文件夹选择流程；选中的本地路径只用于当前浏览器预览，不会启动终端进程。</p>
+          </div>
+          <div>
+            <label class="form-label" for="session-name">会话名称</label>
+            <input class="path-input" id="session-name" type="text" value="新会话" maxlength="48">
+          </div>
+        </div>
+        <div class="dialog-foot"><button class="secondary-btn" id="cancel-dialog" type="button">取消</button><button class="primary-btn" type="submit">创建会话</button></div>
+      </form>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script>
+    const iconFor = {
+      folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 7.5A2 2 0 0 1 5.5 5.5h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M3.8 9.5h16.4"/></svg>',
+      chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 5 7 7-7 7"/></svg>'
+    };
+    const agentMeta = {
+      'Codex': { icon: 'C', css: 'codex', model: 'GPT-6.1-Sol high', status: 'Ready' },
+      'Antigravity': { icon: 'A', css: 'agy', model: 'Gemini 3 Pro', status: 'Ready' },
+      'Claude Code': { icon: '✳', css: 'claude', model: 'Claude Sonnet', status: 'Ready' }
+    };
+    let projects = [
+      { id: 'video-editor', name: 'video-editor', branch: 'main', path: 'D:\\Projects\\video-editor', sessions: [
+        { id: 's1', agent: 'Codex', name: '更新项目侧栏和状态栏', status: 'Ready', time: '4 分钟前', seed: 'commit' },
+        { id: 's2', agent: 'Claude Code', name: '检查视频导出流程', status: 'Working', time: '刚刚', seed: 'review' }
+      ] },
+      { id: 'cli-agents', name: 'cli-agents', branch: 'main', path: 'D:\\Projects\\cli-agents', sessions: [
+        { id: 's3', agent: 'Antigravity', name: '梳理终端交互', status: 'Ready', time: '昨天', seed: 'terminal' },
+        { id: 's4', agent: 'Codex', name: '实现会话列表', status: 'Ready', time: '昨天', seed: 'sidebar' }
+      ] },
+      { id: 'wx-writer', name: 'wx-writer', branch: 'dev', path: 'D:\\Projects\\wx-writer', sessions: [
+        { id: 's5', agent: 'Claude Code', name: '新会话', status: 'Waiting', time: '周一', seed: 'writer' }
+      ] }
+    ];
+    let activeId = 's1';
+    let selectedAgent = 'Codex';
+    let nextSessionNumber = 6;
+    let toastTimer;
+    const messageHistory = {};
+
+    const tree = document.getElementById('session-tree');
+    const terminalContent = document.getElementById('terminal-content');
+    const terminalScroll = document.getElementById('terminal-scroll');
+    const dialog = document.getElementById('new-session-dialog');
+    const projectSelect = document.getElementById('project-select');
+    const folderInput = document.getElementById('folder-input');
+    const toast = document.getElementById('toast');
+
+    function allSessions() { return projects.flatMap(project => project.sessions.map(session => ({ ...session, project }))); }
+    function findActive() { return allSessions().find(session => session.id === activeId) || allSessions()[0]; }
+    function safeText(value) { return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]); }
+    function showToast(message) {
+      toast.textContent = message; toast.hidden = false; clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.hidden = true; }, 2400);
+    }
+    function statusClass(status) { return status === 'Working' ? 'working' : status === 'Waiting' ? 'waiting' : ''; }
+    function renderTree() {
+      const query = document.getElementById('search-input').value.trim().toLowerCase();
+      let visibleProjects = 0;
+      tree.innerHTML = '';
+      for (const project of projects) {
+        const sessions = project.sessions.filter(session => `${project.name} ${session.name} ${session.agent} ${project.path}`.toLowerCase().includes(query));
+        if (query && !sessions.length) continue;
+        visibleProjects++;
+        const isCollapsed = project.collapsed && !query;
+        const section = document.createElement('section'); section.className = `project${isCollapsed ? ' is-collapsed' : ''}`;
+        const head = document.createElement('div'); head.className = 'project-head'; head.setAttribute('role', 'button'); head.setAttribute('tabindex', '0'); head.setAttribute('aria-expanded', String(!isCollapsed));
+        head.innerHTML = `<span class="chevron">${iconFor.chevron}</span><span class="folder-icon">${iconFor.folder}</span><span class="project-name">${safeText(project.name)}</span><span class="project-branch">${safeText(project.branch)}</span>`;
+        head.addEventListener('click', () => { project.collapsed = !project.collapsed; renderTree(); });
+        head.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); head.click(); } });
+        section.append(head);
+        const body = document.createElement('div'); body.className = 'project-body';
+        const path = document.createElement('div'); path.className = 'project-path'; path.textContent = project.path; body.append(path);
+        for (const session of sessions) {
+          const meta = agentMeta[session.agent];
+          const item = document.createElement('div'); item.className = `session${session.id === activeId ? ' active' : ''}`; item.setAttribute('role', 'button'); item.setAttribute('tabindex', '0'); item.setAttribute('aria-current', session.id === activeId ? 'true' : 'false');
+          item.innerHTML = `<span class="agent-mark ${meta.css}">${meta.icon}</span><span class="session-copy"><span class="session-firstline"><span class="session-tool">${safeText(session.agent)}</span><span class="status-dot ${statusClass(session.status)}"></span><span class="session-status">${safeText(session.status)}</span><span class="session-clock">${safeText(session.time)}</span></span><span class="session-label">${safeText(session.name)}</span></span>`;
+          item.addEventListener('click', () => activateSession(session.id));
+          item.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); activateSession(session.id); } });
+          body.append(item);
+        }
+        section.append(body); tree.append(section);
+      }
+      if (!visibleProjects) tree.innerHTML = '<div class="empty-search">没有找到匹配的会话</div>';
+      document.getElementById('project-count').textContent = projects.length;
+      document.getElementById('top-session-count').textContent = allSessions().length;
+    }
+
+    const seeds = {
+      commit: {
+        command: 'git status --short', files: [['M', 'src/components/Sidebar.tsx', '+18', '-4'], ['M', 'src/styles/theme.css', '+6', '-2'], ['M', 'ROADMAP.md', '+5', '-0']],
+        heading: '提交记录', message: '主人，已提交：<span class="hash">fe43168c</span>。', commit: 'docs: 约束分镜主体选择以支持代码动画并强化素材能力审核', copy: '仅包含本轮 3 个文件的改动，其他未提交内容保留，未推送远端。', recap: '为侧栏增加清晰的项目分组和会话状态。已完成类型检查并提交，其他未提交改动保留，未推送远端。'
+      },
+      review: {
+        command: 'git diff --stat', files: [['M', 'src/export/VideoRenderer.ts', '+11', '-5'], ['M', 'src/export/AudioMixer.ts', '+8', '-3']],
+        heading: '代码检查', message: '主人，我检查了视频导出流程，发现 <span class="hash">2 处改动</span>。', commit: '检查完成：导出前先校验媒体轨道状态', copy: '当前提交覆盖视频轨道和音频混音逻辑，未执行实际编码任务。', recap: '已阅读导出与混音入口，确认空音轨会被安全跳过。建议在下一轮补一个缺少视频编码器时的提示。'
+      },
+      terminal: {
+        command: 'git status --short', files: [['M', 'src/terminal/TerminalPane.tsx', '+23', '-6'], ['A', 'src/terminal/session-state.ts', '+41', '-0']],
+        heading: '终端会话', message: '主人，终端会话模型已整理好：<span class="hash">一个会话对应一个独立目录</span>。', commit: 'feat: isolate terminal sessions by working directory', copy: '工作目录跟随会话保存；点击侧栏时切换当前视图。', recap: '每个会话独立管理 Agent 类型、项目目录和运行状态。切换视图不会重启其终端进程。'
+      },
+      sidebar: {
+        command: 'git diff --stat', files: [['M', 'src/workspace/SessionTree.tsx', '+16', '-2'], ['M', 'src/workspace/ProjectGroup.tsx', '+20', '-4']],
+        heading: '侧栏会话树', message: '主人，项目分组和会话列表已经准备好。', commit: 'feat: group agent sessions under their projects', copy: '同一项目下可以显示不同 Agent 的独立会话。', recap: '每个项目展示自己的 CLI 会话；折叠项目、切换会话和搜索都只影响界面，不会打断后台运行。'
+      },
+      writer: {
+        command: 'git status --short', files: [['M', 'src/editor/DraftComposer.tsx', '+12', '-3']],
+        heading: '草稿编辑器', message: '主人，写作工作区已打开，草稿状态正常。', commit: 'docs: refine the next article draft', copy: '工作目录：wx-writer。当前会话与其他项目独立。', recap: '会话独立绑定 wx-writer 项目，切回其他项目时草稿工作仍保留在当前会话中。'
+      }
+    };
+
+    function renderConversation(session) {
+      const meta = agentMeta[session.agent];
+      if (messageHistory[session.id]?.length) {
+        renderSeed(session, seeds[session.seed] || seeds.commit, true);
+        renderMessages(session.id, meta);
+      } else renderSeed(session, seeds[session.seed] || seeds.commit, false);
+    }
+    function renderSeed(session, seed, includeChat) {
+      const meta = agentMeta[session.agent];
+      terminalContent.innerHTML = `<div class="term-command"><span class="term-prompt">›</span><span class="term-command-text">${safeText(seed.command)}</span></div><div class="term-result">${seed.files.map(file => `<div class="file-change"><span class="file-state ${file[0] === 'A' ? 'file-added' : ''}">${file[0]}</span><span class="file-name">${safeText(file[1])}</span><span class="file-stat"><span class="file-added">${safeText(file[2])}</span> <span class="file-removed">${safeText(file[3])}</span></span><span></span></div>`).join('')}<div style="margin-top:5px;color:#81889a">+ ${seed.files.length + 2} files changed</div></div><hr class="terminal-rule"><div class="term-heading">• ${safeText(seed.heading)}</div><p class="term-message">${seed.message}</p><div class="commit-title">${safeText(seed.commit)}</div><p class="term-copy">${safeText(seed.copy)}</p><div class="term-command"><span class="term-prompt">↳</span><span class="term-command-text" style="color:#9299aa">工作目录 · ${safeText(session.project.path)}</span></div><div class="recap"><span class="recap-label">↳ Recap</span><span class="recap-copy">${safeText(seed.recap)}</span></div>${includeChat ? '<div class="chat-list" id="chat-list"></div>' : ''}<div class="activity-line">Worked for 1m 19s · ${safeText(meta.status)} · 模拟会话</div>`;
+    }
+    function renderMessages(sessionId, meta) {
+      const list = document.getElementById('chat-list');
+      if (!list) return;
+      for (const entry of messageHistory[sessionId] || []) appendMessage(list, entry, meta);
+    }
+    function appendMessage(list, entry, meta) {
+      const user = document.createElement('div'); user.className = 'chat-user'; user.textContent = entry.user; list.append(user);
+      const answer = document.createElement('div'); answer.className = 'chat-assistant dynamic-message';
+      answer.innerHTML = `<span class="agent-mark ${meta.css}">${meta.icon}</span><div class="chat-assistant-copy"><p>${safeText(entry.answer)}</p><div class="inline-result"><span class="ok">✓</span> ${safeText(entry.detail)}</div></div>`; list.append(answer);
+    }
+    function activateSession(id) {
+      activeId = id;
+      const session = findActive();
+      if (!session) return;
+      const meta = agentMeta[session.agent];
+      document.getElementById('active-project-name').textContent = session.project.name;
+      document.getElementById('active-branch').textContent = session.project.branch;
+      document.getElementById('active-folder').textContent = session.project.path;
+      document.getElementById('active-status-text').textContent = session.status;
+      document.getElementById('active-status-dot').className = `status-dot ${statusClass(session.status)}`;
+      document.getElementById('status-tool').textContent = session.agent;
+      document.getElementById('status-tool').style.color = meta.css === 'claude' ? '#f3bd91' : meta.css === 'agy' ? '#99d4ae' : '#91b4ff';
+      document.getElementById('status-project').textContent = session.project.name;
+      document.getElementById('status-branch').textContent = session.project.branch;
+      document.getElementById('status-model').textContent = meta.model;
+      document.getElementById('status-counts').textContent = session.agent === 'Codex' ? '+918 · -54' : session.agent === 'Antigravity' ? '+246 · -18' : '+603 · -31';
+      renderTree(); renderConversation(session);
+      terminalScroll.scrollTop = 0;
+    }
+    function updateProjectSelect() {
+      const current = findActive();
+      projectSelect.innerHTML = projects.map(project => `<option value="${safeText(project.id)}">${safeText(project.name)} · ${safeText(project.path)}</option>`).join('') + '<option value="__new__">＋ 使用新文件夹创建项目…</option>';
+      projectSelect.value = current?.project.id || projects[0].id;
+      folderInput.value = current?.project.path || projects[0].path;
+      document.getElementById('session-name').value = '新会话';
+    }
+    function openDialog() {
+      updateProjectSelect();
+      const current = findActive();
+      selectedAgent = current?.agent || 'Codex';
+      document.querySelectorAll('.agent-choice').forEach(choice => choice.classList.toggle('selected', choice.dataset.agent === selectedAgent));
+      dialog.hidden = false;
+      setTimeout(() => document.getElementById('session-name').focus(), 0);
+    }
+    function closeDialog() { dialog.hidden = true; }
+
+    document.getElementById('new-session-top').addEventListener('click', openDialog);
+    document.getElementById('new-session-small').addEventListener('click', openDialog);
+    document.getElementById('close-dialog').addEventListener('click', closeDialog);
+    document.getElementById('cancel-dialog').addEventListener('click', closeDialog);
+    dialog.addEventListener('click', event => { if (event.target === dialog) closeDialog(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && !dialog.hidden) closeDialog(); });
+    document.querySelectorAll('.agent-choice').forEach(choice => choice.addEventListener('click', () => {
+      selectedAgent = choice.dataset.agent;
+      document.querySelectorAll('.agent-choice').forEach(button => button.classList.toggle('selected', button === choice));
+    }));
+    projectSelect.addEventListener('change', () => {
+      const project = projects.find(item => item.id === projectSelect.value);
+      if (project) folderInput.value = project.path;
+      else { folderInput.value = 'D:\\Projects\\new-project'; folderInput.focus(); folderInput.select(); }
+    });
+    document.getElementById('browse-folder').addEventListener('click', () => document.getElementById('folder-picker').click());
+    document.getElementById('folder-picker').addEventListener('change', event => {
+      const files = event.target.files;
+      if (!files?.length) return;
+      const root = files[0].webkitRelativePath?.split('/')[0] || files[0].name;
+      const knownFolder = projects.find(project => project.name.toLowerCase() === root.toLowerCase());
+      folderInput.value = knownFolder?.path || `本地文件夹\\${root}`;
+      if (projectSelect.value === '__new__' || !knownFolder) projectSelect.value = '__new__';
+      showToast(`已选择文件夹：${root}（仅演示，未读取文件内容）`);
+      event.target.value = '';
+    });
+    document.getElementById('session-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const selectedProject = projects.find(project => project.id === projectSelect.value);
+      const folder = folderInput.value.trim();
+      if (!folder) { folderInput.focus(); showToast('请先选择项目文件夹'); return; }
+      let project = selectedProject;
+      if (projectSelect.value === '__new__' || !project) {
+        const name = folder.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || 'new-project';
+        const duplicate = projects.find(item => item.path.toLowerCase() === folder.toLowerCase());
+        project = duplicate || { id: `p${Date.now()}`, name, branch: 'main', path: folder, sessions: [] };
+        if (!duplicate) projects.push(project);
+      }
+      if (selectedProject && projectSelect.value !== '__new__') project.path = folder;
+      const name = document.getElementById('session-name').value.trim() || '新会话';
+      const session = { id: `s${nextSessionNumber++}`, agent: selectedAgent, name, status: 'Ready', time: '刚刚', seed: selectedAgent === 'Antigravity' ? 'terminal' : selectedAgent === 'Claude Code' ? 'review' : 'commit' };
+      project.sessions.push(session);
+      closeDialog(); activateSession(session.id);
+      showToast(`${selectedAgent} 演示会话已添加到 ${project.name}`);
+    });
+    document.getElementById('change-folder').addEventListener('click', () => {
+      const session = findActive(); if (!session) return;
+      openDialog();
+      projectSelect.value = session.project.id;
+      folderInput.value = session.project.path;
+      document.getElementById('session-name').value = session.name;
+    });
+    document.getElementById('copy-path').addEventListener('click', async () => {
+      const session = findActive(); if (!session) return;
+      try { await navigator.clipboard.writeText(session.project.path); showToast('项目路径已复制'); }
+      catch { showToast(`当前项目：${session.project.path}`); }
+    });
+    document.getElementById('session-menu').addEventListener('click', () => showToast('会话信息：独立项目目录 · 模拟终端进程'));
+    document.getElementById('attach-info').addEventListener('click', () => showToast('此 Demo 使用模拟数据，不连接本机 CLI 或模型'));
+    document.getElementById('search-input').addEventListener('input', renderTree);
+
+    document.getElementById('composer-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const input = document.getElementById('composer-input');
+      const text = input.value.trim(); if (!text) { input.focus(); return; }
+      const session = findActive(); if (!session) return;
+      const meta = agentMeta[session.agent];
+      messageHistory[session.id] ||= [];
+      const list = document.getElementById('chat-list');
+      if (list) {
+        const user = document.createElement('div'); user.className = 'chat-user dynamic-message'; user.textContent = text; list.append(user);
+        const answer = document.createElement('div'); answer.className = 'chat-assistant dynamic-message'; answer.innerHTML = `<span class="agent-mark ${meta.css}">${meta.icon}</span><div class="chat-assistant-copy"><p class="working-line">正在生成模拟回复…</p></div>`; list.append(answer);
+        session.status = 'Working'; renderTree(); document.getElementById('active-status-text').textContent = 'Working'; document.getElementById('active-status-dot').className = 'status-dot working';
+        terminalScroll.scrollTop = terminalScroll.scrollHeight;
+        input.value = ''; document.getElementById('send-btn').disabled = true;
+        setTimeout(() => {
+          const answerText = `收到。这是 ${session.agent} 在「${session.project.name}」会话中的演示回复。你刚才发送的消息已加入当前会话。`;
+          const detail = '模拟交互完成 · 未启动 AI 进程';
+          messageHistory[session.id].push({ user: text, answer: answerText, detail });
+          answer.querySelector('.chat-assistant-copy').innerHTML = `<p>${safeText(answerText)}</p><div class="inline-result"><span class="ok">✓</span> ${safeText(detail)}</div>`;
+          session.status = 'Ready'; session.time = '刚刚';
+          renderTree(); document.getElementById('active-status-text').textContent = 'Ready'; document.getElementById('active-status-dot').className = 'status-dot';
+          document.getElementById('send-btn').disabled = false;
+          terminalScroll.scrollTop = terminalScroll.scrollHeight;
+          input.focus();
+        }, 850);
+      } else {
+        messageHistory[session.id].push({ user: text, answer: `收到。这是 ${session.agent} 在「${session.project.name}」会话中的演示回复。`, detail: '模拟交互完成 · 未启动 AI 进程' });
+        input.value = ''; activateSession(session.id); showToast('模拟回复已加入会话');
+      }
+    });
+    document.getElementById('composer-input').addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); document.getElementById('composer-form').requestSubmit(); }
+    });
+
+    renderTree(); activateSession(activeId);
+  </script>
+</body>
+</html>

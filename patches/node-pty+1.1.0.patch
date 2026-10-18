@@ -1,0 +1,351 @@
+diff --git a/node_modules/node-pty/lib/index.js b/node_modules/node-pty/lib/index.js
+index 1527069..d78fc96 100644
+--- a/node_modules/node-pty/lib/index.js
++++ b/node_modules/node-pty/lib/index.js
+@@ -44,6 +44,10 @@ function open(options) {
+     return terminalCtor.open(options);
+ }
+ exports.open = open;
++function supportsSafeWindowsProcessTreeCleanup() {
++    return process.platform === 'win32' && utils_1.loadNativeModule('conpty').module.supportsJobObjectCleanup === true;
++}
++exports.supportsSafeWindowsProcessTreeCleanup = supportsSafeWindowsProcessTreeCleanup;
+ /**
+  * Expose the native API when not Windows, note that this is not public API and
+  * could be removed at any time.
+diff --git a/node_modules/node-pty/lib/windowsPtyAgent.js b/node_modules/node-pty/lib/windowsPtyAgent.js
+index a358ffb..7d049a8 100644
+--- a/node_modules/node-pty/lib/windowsPtyAgent.js
++++ b/node_modules/node-pty/lib/windowsPtyAgent.js
+@@ -9,7 +9,6 @@ exports.argsToCommandLine = exports.WindowsPtyAgent = void 0;
+ var fs = require("fs");
+ var os = require("os");
+ var path = require("path");
+-var child_process_1 = require("child_process");
+ var net_1 = require("net");
+ var windowsConoutConnection_1 = require("./windowsConoutConnection");
+ var utils_1 = require("./utils");
+@@ -137,16 +136,6 @@ var WindowsPtyAgent = /** @class */ (function () {
+             if (!this._useConptyDll) {
+                 this._inSocket.readable = false;
+                 this._outSocket.readable = false;
+-                this._getConsoleProcessList().then(function (consoleProcessList) {
+-                    consoleProcessList.forEach(function (pid) {
+-                        try {
+-                            process.kill(pid);
+-                        }
+-                        catch (e) {
+-                            // Ignore if process cannot be found (kill ESRCH error)
+-                        }
+-                    });
+-                });
+                 this._ptyNative.kill(this._pty, this._useConptyDll);
+                 this._conoutSocketWorker.dispose();
+             }
+@@ -178,21 +167,6 @@ var WindowsPtyAgent = /** @class */ (function () {
+             });
+         }
+     };
+-    WindowsPtyAgent.prototype._getConsoleProcessList = function () {
+-        var _this = this;
+-        return new Promise(function (resolve) {
+-            var agent = child_process_1.fork(path.join(__dirname, 'conpty_console_list_agent'), [_this._innerPid.toString()]);
+-            agent.on('message', function (message) {
+-                clearTimeout(timeout);
+-                resolve(message.consoleProcessList);
+-            });
+-            var timeout = setTimeout(function () {
+-                // Something went wrong, just send back the shell PID
+-                agent.kill();
+-                resolve([_this._innerPid]);
+-            }, 5000);
+-        });
+-    };
+     Object.defineProperty(WindowsPtyAgent.prototype, "exitCode", {
+         get: function () {
+             if (this._useConpty) {
+diff --git a/node_modules/node-pty/src/index.ts b/node_modules/node-pty/src/index.ts
+index 8a7e950..791037d 100644
+--- a/node_modules/node-pty/src/index.ts
++++ b/node_modules/node-pty/src/index.ts
+@@ -45,6 +45,10 @@ export function open(options: IPtyOpenOptions): ITerminal {
+   return terminalCtor.open(options);
+ }
+ 
++export function supportsSafeWindowsProcessTreeCleanup(): boolean {
++  return process.platform === 'win32' && loadNativeModule('conpty').module.supportsJobObjectCleanup === true;
++}
++
+ /**
+  * Expose the native API when not Windows, note that this is not public API and
+  * could be removed at any time.
+diff --git a/node_modules/node-pty/src/win/conpty.cc b/node_modules/node-pty/src/win/conpty.cc
+index 7b286d3..df8c26b 100644
+--- a/node_modules/node-pty/src/win/conpty.cc
++++ b/node_modules/node-pty/src/win/conpty.cc
+@@ -18,6 +18,7 @@
+ #include <iostream>
+ #include <string>
+ #include <thread>
++#include <mutex>
+ #include <vector>
+ #include <Windows.h>
+ #include <strsafe.h>
+@@ -45,11 +46,13 @@ struct pty_baton {
+   HPCON hpc;
+ 
+   HANDLE hShell;
++  HANDLE hJob = nullptr;
+ 
+   pty_baton(int _id, HANDLE _hIn, HANDLE _hOut, HPCON _hpc) : id(_id), hIn(_hIn), hOut(_hOut), hpc(_hpc) {};
+ };
+ 
+ static std::vector<std::unique_ptr<pty_baton>> ptyHandles;
++static std::mutex g_ptyHandlesMutex;
+ static volatile LONG ptyCounter;
+ 
+ static pty_baton* get_pty_baton(int id) {
+@@ -102,7 +105,12 @@ void SetupExitCallback(Napi::Env env, Napi::Function cb, pty_baton* baton) {
+     // Get process exit code.
+     GetExitCodeProcess(baton->hShell, (LPDWORD)(&exit_event->exit_code));
+     // Clean up handles
++    std::lock_guard<std::mutex> lock(g_ptyHandlesMutex);
+     CloseHandle(baton->hShell);
++    if (baton->hJob != nullptr) {
++      CloseHandle(baton->hJob);
++      baton->hJob = nullptr;
++    }
+     assert(remove_pty_baton(baton->id));
+ 
+     auto status = tsfn.BlockingCall(exit_event, callback); // In main thread
+@@ -301,8 +309,10 @@ static Napi::Value PtyStartProcess(const Napi::CallbackInfo& info) {
+     // We were able to instantiate a conpty
+     const int ptyId = InterlockedIncrement(&ptyCounter);
+     marshal.Set("pty", Napi::Number::New(env, ptyId));
+-    ptyHandles.emplace_back(
+-        std::make_unique<pty_baton>(ptyId, hIn, hOut, hpc));
++    {
++      std::lock_guard<std::mutex> lock(g_ptyHandlesMutex);
++      ptyHandles.emplace_back(std::make_unique<pty_baton>(ptyId, hIn, hOut, hpc));
++    }
+   } else {
+     throw Napi::Error::New(env, "Cannot launch conpty");
+   }
+@@ -351,6 +361,7 @@ static Napi::Value PtyConnect(const Napi::CallbackInfo& info) {
+   Napi::Function exitCallback = info[5].As<Napi::Function>();
+ 
+   // Fetch pty handle from ID and start process
++  std::lock_guard<std::mutex> lock(g_ptyHandlesMutex);
+   pty_baton* handle = get_pty_baton(id);
+   if (!handle) {
+     throw Napi::Error::New(env, "Invalid pty handle");
+@@ -409,6 +420,32 @@ static Napi::Value PtyConnect(const Napi::CallbackInfo& info) {
+     throw errorWithCode(info, "UpdateProcThreadAttribute failed");
+   }
+ 
++  HANDLE hJob = CreateJobObjectW(nullptr, nullptr);
++  if (hJob == nullptr) {
++    Napi::Error error = errorWithCode(info, "CreateJobObjectW failed");
++    DeleteProcThreadAttributeList(siEx.lpAttributeList);
++    delete[] attrList;
++    CloseHandle(handle->hIn);
++    CloseHandle(handle->hOut);
++    handle->hIn = nullptr;
++    handle->hOut = nullptr;
++    throw error;
++  }
++
++  JOBOBJECT_EXTENDED_LIMIT_INFORMATION jobInfo{};
++  jobInfo.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
++  if (!SetInformationJobObject(hJob, JobObjectExtendedLimitInformation, &jobInfo, sizeof(jobInfo))) {
++    Napi::Error error = errorWithCode(info, "SetInformationJobObject failed");
++    CloseHandle(hJob);
++    DeleteProcThreadAttributeList(siEx.lpAttributeList);
++    delete[] attrList;
++    CloseHandle(handle->hIn);
++    CloseHandle(handle->hOut);
++    handle->hIn = nullptr;
++    handle->hOut = nullptr;
++    throw error;
++  }
++
+   PROCESS_INFORMATION piClient{};
+   fSuccess = !!CreateProcessW(
+       nullptr,
+@@ -416,15 +453,57 @@ static Napi::Value PtyConnect(const Napi::CallbackInfo& info) {
+       nullptr,                      // lpProcessAttributes
+       nullptr,                      // lpThreadAttributes
+       false,                        // bInheritHandles VERY IMPORTANT that this is false
+-      EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT, // dwCreationFlags
++      EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT | CREATE_SUSPENDED, // dwCreationFlags
+       envArg,                       // lpEnvironment
+       mutableCwd.get(),             // lpCurrentDirectory
+       &siEx.StartupInfo,            // lpStartupInfo
+       &piClient                     // lpProcessInformation
+   );
+   if (!fSuccess) {
+-    throw errorWithCode(info, "Cannot create process");
++    Napi::Error error = errorWithCode(info, "Cannot create process");
++    CloseHandle(hJob);
++    DeleteProcThreadAttributeList(siEx.lpAttributeList);
++    delete[] attrList;
++    CloseHandle(handle->hIn);
++    CloseHandle(handle->hOut);
++    handle->hIn = nullptr;
++    handle->hOut = nullptr;
++    throw error;
++  }
++
++  if (!AssignProcessToJobObject(hJob, piClient.hProcess)) {
++    Napi::Error error = errorWithCode(info, "AssignProcessToJobObject failed");
++    TerminateProcess(piClient.hProcess, 1);
++    WaitForSingleObject(piClient.hProcess, INFINITE);
++    CloseHandle(piClient.hThread);
++    CloseHandle(piClient.hProcess);
++    CloseHandle(hJob);
++    DeleteProcThreadAttributeList(siEx.lpAttributeList);
++    delete[] attrList;
++    CloseHandle(handle->hIn);
++    CloseHandle(handle->hOut);
++    handle->hIn = nullptr;
++    handle->hOut = nullptr;
++    throw error;
++  }
++
++  if (ResumeThread(piClient.hThread) == static_cast<DWORD>(-1)) {
++    Napi::Error error = errorWithCode(info, "ResumeThread failed");
++    TerminateJobObject(hJob, 1);
++    WaitForSingleObject(piClient.hProcess, INFINITE);
++    CloseHandle(piClient.hThread);
++    CloseHandle(piClient.hProcess);
++    CloseHandle(hJob);
++    DeleteProcThreadAttributeList(siEx.lpAttributeList);
++    delete[] attrList;
++    CloseHandle(handle->hIn);
++    CloseHandle(handle->hOut);
++    handle->hIn = nullptr;
++    handle->hOut = nullptr;
++    throw error;
+   }
++  DeleteProcThreadAttributeList(siEx.lpAttributeList);
++  delete[] attrList;
+ 
+   HANDLE hLibrary = LoadConptyDll(info, useConptyDll);
+   bool fLoadedDll = hLibrary != nullptr;
+@@ -440,12 +519,15 @@ static Napi::Value PtyConnect(const Napi::CallbackInfo& info) {
+ 
+   // Update handle
+   handle->hShell = piClient.hProcess;
++  handle->hJob = hJob;
+ 
+   // Close the thread handle to avoid resource leak
+   CloseHandle(piClient.hThread);
+   // Close the input read and output write handle of the pseudoconsole
+   CloseHandle(handle->hIn);
+   CloseHandle(handle->hOut);
++  handle->hIn = nullptr;
++  handle->hOut = nullptr;
+ 
+   SetupExitCallback(env, exitCallback, handle);
+ 
+@@ -472,6 +554,7 @@ static Napi::Value PtyResize(const Napi::CallbackInfo& info) {
+   SHORT rows = static_cast<SHORT>(info[2].As<Napi::Number>().Uint32Value());
+   const bool useConptyDll = info[3].As<Napi::Boolean>().Value();
+ 
++  std::lock_guard<std::mutex> lock(g_ptyHandlesMutex);
+   const pty_baton* handle = get_pty_baton(id);
+ 
+   if (handle != nullptr) {
+@@ -513,6 +596,7 @@ static Napi::Value PtyClear(const Napi::CallbackInfo& info) {
+     return env.Undefined();
+   }
+ 
++  std::lock_guard<std::mutex> lock(g_ptyHandlesMutex);
+   const pty_baton* handle = get_pty_baton(id);
+ 
+   if (handle != nullptr) {
+@@ -544,9 +628,15 @@ static Napi::Value PtyKill(const Napi::CallbackInfo& info) {
+   int id = info[0].As<Napi::Number>().Int32Value();
+   const bool useConptyDll = info[1].As<Napi::Boolean>().Value();
+ 
+-  const pty_baton* handle = get_pty_baton(id);
++  std::lock_guard<std::mutex> lock(g_ptyHandlesMutex);
++  pty_baton* handle = get_pty_baton(id);
+ 
+   if (handle != nullptr) {
++    if (handle->hJob != nullptr && !TerminateJobObject(handle->hJob, 1) &&
++        WaitForSingleObject(handle->hShell, 0) != WAIT_OBJECT_0) {
++      throw errorWithCode(info, "TerminateJobObject failed");
++    }
++
+     HANDLE hLibrary = LoadConptyDll(info, useConptyDll);
+     bool fLoadedDll = hLibrary != nullptr;
+     if (fLoadedDll)
+@@ -559,9 +649,6 @@ static Napi::Value PtyKill(const Napi::CallbackInfo& info) {
+         pfnClosePseudoConsole(handle->hpc);
+       }
+     }
+-    if (useConptyDll) {
+-      TerminateProcess(handle->hShell, 1);
+-    }
+   }
+ 
+   return env.Undefined();
+@@ -577,6 +664,7 @@ Napi::Object init(Napi::Env env, Napi::Object exports) {
+   exports.Set("resize", Napi::Function::New(env, PtyResize));
+   exports.Set("clear", Napi::Function::New(env, PtyClear));
+   exports.Set("kill", Napi::Function::New(env, PtyKill));
++  exports.Set("supportsJobObjectCleanup", Napi::Boolean::New(env, true));
+   return exports;
+ };
+ 
+diff --git a/node_modules/node-pty/src/windowsPtyAgent.ts b/node_modules/node-pty/src/windowsPtyAgent.ts
+index d705444..b792175 100644
+--- a/node_modules/node-pty/src/windowsPtyAgent.ts
++++ b/node_modules/node-pty/src/windowsPtyAgent.ts
+@@ -7,7 +7,6 @@
+ import * as fs from 'fs';
+ import * as os from 'os';
+ import * as path from 'path';
+-import { fork } from 'child_process';
+ import { Socket } from 'net';
+ import { ArgvOrCommandLine } from './types';
+ import { ConoutConnection } from './windowsConoutConnection';
+@@ -144,15 +143,6 @@ export class WindowsPtyAgent {
+       if (!this._useConptyDll) {
+         this._inSocket.readable = false;
+         this._outSocket.readable = false;
+-        this._getConsoleProcessList().then(consoleProcessList => {
+-          consoleProcessList.forEach((pid: number) => {
+-            try {
+-              process.kill(pid);
+-            } catch (e) {
+-              // Ignore if process cannot be found (kill ESRCH error)
+-            }
+-          });
+-        });
+         (this._ptyNative as IConptyNative).kill(this._pty, this._useConptyDll);
+         this._conoutSocketWorker.dispose();
+       } else {
+@@ -182,21 +172,6 @@ export class WindowsPtyAgent {
+     }
+   }
+ 
+-  private _getConsoleProcessList(): Promise<number[]> {
+-    return new Promise<number[]>(resolve => {
+-      const agent = fork(path.join(__dirname, 'conpty_console_list_agent'), [ this._innerPid.toString() ]);
+-      agent.on('message', message => {
+-        clearTimeout(timeout);
+-        resolve(message.consoleProcessList);
+-      });
+-      const timeout = setTimeout(() => {
+-        // Something went wrong, just send back the shell PID
+-        agent.kill();
+-        resolve([ this._innerPid ]);
+-      }, 5000);
+-    });
+-  }
+-
+   public get exitCode(): number | undefined {
+     if (this._useConpty) {
+       return this._exitCode;
