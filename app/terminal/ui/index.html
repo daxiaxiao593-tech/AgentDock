@@ -17,6 +17,7 @@
       <span class="agent-label" id="agent-label">Codex</span>
     </div>
     <div class="directory" id="directory" title=""></div>
+    <button id="choose-directory" type="button" disabled>选择工作目录</button>
     <div class="controls">
       <span id="status" role="status" aria-live="polite">连接中</span>
       <button id="start" class="primary" type="button" disabled>启动 Codex</button>
@@ -24,15 +25,24 @@
     </div>
   </header>
   <nav class="session-tabs" role="tablist" aria-label="CLI 终端">
-    <button id="tab-codex" class="session-tab active" type="button" role="tab" aria-selected="true" aria-controls="terminal-codex" data-session-id="codex">
-      <span>Codex</span><span class="tab-status" data-status-for="codex">未启动</span>
-    </button>
-    <button id="tab-agy" class="session-tab" type="button" role="tab" aria-selected="false" aria-controls="terminal-agy" data-session-id="agy">
-      <span>Antigravity</span><span class="tab-status" data-status-for="agy">未启动</span>
-    </button>
-    <button id="tab-claude" class="session-tab" type="button" role="tab" aria-selected="false" aria-controls="terminal-claude" data-session-id="claude">
-      <span>Claude Code</span><span class="tab-status" data-status-for="claude">未启动</span>
-    </button>
+    <div class="session-entry">
+      <button id="tab-codex" class="session-tab active" type="button" role="tab" aria-selected="true" aria-controls="terminal-codex" data-session-id="codex">
+        <span>Codex</span><span class="tab-status" data-status-for="codex">未启动</span><span class="tab-unread" data-unread-for="codex" hidden>新输出</span>
+      </button>
+      <label class="launch-setting"><input type="checkbox" data-launch-session="codex"> 随应用启动</label>
+    </div>
+    <div class="session-entry">
+      <button id="tab-agy" class="session-tab" type="button" role="tab" aria-selected="false" aria-controls="terminal-agy" data-session-id="agy">
+        <span>Antigravity</span><span class="tab-status" data-status-for="agy">未启动</span><span class="tab-unread" data-unread-for="agy" hidden>新输出</span>
+      </button>
+      <label class="launch-setting"><input type="checkbox" data-launch-session="agy"> 随应用启动</label>
+    </div>
+    <div class="session-entry">
+      <button id="tab-claude" class="session-tab" type="button" role="tab" aria-selected="false" aria-controls="terminal-claude" data-session-id="claude">
+        <span>Claude Code</span><span class="tab-status" data-status-for="claude">未启动</span><span class="tab-unread" data-unread-for="claude" hidden>新输出</span>
+      </button>
+      <label class="launch-setting"><input type="checkbox" data-launch-session="claude"> 随应用启动</label>
+    </div>
   </nav>
   <main id="terminals" aria-label="终端会话">
     <section id="terminal-codex" class="terminal-panel active" role="tabpanel" aria-labelledby="tab-codex"></section>

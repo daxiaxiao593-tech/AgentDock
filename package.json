@@ -1,18 +1,25 @@
 {
-  "name": "agentdock-mock",
+  "name": "agentdock",
   "version": "0.1.0",
   "private": true,
   "description": "AgentDock Windows CLI terminal prototype",
+  "main": "app/desktop/main.cjs",
   "scripts": {
     "terminal": "node app/terminal/terminal-app.cjs",
-    "test": "node --test tests/mock-engine.test.cjs tests/session-runtime.test.cjs tests/output-flow-controller.test.cjs tests/node-pty-driver.test.cjs tests/cli-launch-resolver.test.cjs tests/terminal-app.test.cjs tests/terminal-ui-server.test.cjs tests/session-runtime-fake-cli.test.cjs tests/node-pty-job-cleanup.integration.test.cjs tests/node-pty-conpty.integration.test.cjs tests/session-runtime-pty-backpressure.integration.test.cjs",
+    "desktop": "electron .",
+    "test": "node --test tests/mock-engine.test.cjs tests/session-runtime.test.cjs tests/output-flow-controller.test.cjs tests/node-pty-driver.test.cjs tests/cli-launch-resolver.test.cjs tests/terminal-app.test.cjs tests/terminal-ui-server.test.cjs tests/session-runtime-fake-cli.test.cjs tests/node-pty-job-cleanup.integration.test.cjs tests/node-pty-conpty.integration.test.cjs tests/session-runtime-pty-backpressure.integration.test.cjs tests/desktop-workspace.test.cjs tests/desktop-service-host.test.cjs tests/desktop-runtime-path.test.cjs tests/desktop-main.test.cjs tests/desktop-service-entry.test.cjs tests/desktop-preload.test.cjs tests/terminal-ui-renderer.test.cjs",
+    "test:desktop": "node --test tests/electron-desktop-smoke.integration.test.cjs",
     "test:browser": "node tests/mock-browser.cjs",
     "postinstall": "node scripts/apply-node-pty-patch.cjs && node scripts/rebuild-node-pty.cjs"
   },
   "dependencies": {
     "@xterm/addon-fit": "0.11.0",
     "@xterm/xterm": "6.0.0",
+    "node": "24.22.0",
     "node-pty": "1.1.0",
     "ws": "8.22.0"
+  },
+  "devDependencies": {
+    "electron": "44.9.0"
   }
 }

@@ -28,3 +28,18 @@ test('terminal app exposes independent idle sessions for all three CLIs in one w
     assert.equal(app.manager.getRuntime(session.id).status, 'idle');
   }
 });
+
+test('desktop terminal app restores the configured shared directory and per-CLI launchOnOpen flags', () => {
+  const config = {
+    schemaVersion: 1,
+    cwd: 'C:\\AgentDock\\saved workspace',
+    launchOnOpen: { codex: true, agy: false, claude: true }
+  };
+  const app = createTerminalApp({ workspaceStore: { load: () => config }, platform: 'linux' });
+  assert.deepEqual(app.sessions.map(session => [session.id, session.cwd, session.launchOnOpen]), [
+    ['codex', config.cwd, true],
+    ['agy', config.cwd, false],
+    ['claude', config.cwd, true]
+  ]);
+  assert.equal(app.manager.sessions.get('agy').launchOnOpen, false);
+});

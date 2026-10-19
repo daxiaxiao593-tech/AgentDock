@@ -20,7 +20,11 @@ npm run terminal -- --cwd "D:\your\workspace"
 
 打开命令输出的本机地址，即可在 Codex、Antigravity、Claude Code 三个标签间切换。每个标签拥有独立运行会话，三个会话可同时运行；启动按钮只启动当前标签，停止按钮只停止当前标签。三个 CLI 共用命令指定的工作目录，同时运行时可能修改同一文件。AgentDock 不预填任务或确认文本，也不修改 CLI 登录、模型、API 或权限配置。
 
-此终端目前是浏览器与本机 Runtime 原型，尚无 Electron 桌面外壳、安装包或快捷方式。CLI 启动依赖本机可解析到 `codex.exe`、`agy.exe`、`claude.exe`。
+CLI 启动依赖本机可解析到 `codex.exe`、`agy.exe`、`claude.exe`；AgentDock 不安装或配置这些 CLI。
+
+## Windows 桌面版
+
+开发态桌面外壳可用 `npm run desktop` 启动；安装包与桌面快捷方式属于任务 5，尚未实施。
 
 ## 文档与验证
 
@@ -32,4 +36,4 @@ npm run terminal -- --cwd "D:\your\workspace"
 
 根目录五份原资料、`历史版本/`、`讨论记录/` 和 `Demo/agent-desk-demo.html` 保持原样。旧原型不是本轮交付入口。原资料暂用名 Agent Desk 对应产品 AgentDock。
 
-真实 CLI、Agent Workbench 固定版本复用实验、Electron、EXE、桌面快捷方式和单实例验收均属于后续阶段。
+Agent Workbench 固定版本复用实验与 Electron 桌面外壳见现行实施方案与开发记录；安装包和桌面快捷方式待任务 5。

@@ -4,9 +4,11 @@
   const directoryElement = document.getElementById('directory');
   const startButton = document.getElementById('start');
   const stopButton = document.getElementById('stop');
+  const chooseDirectoryButton = document.getElementById('choose-directory');
   const noticeElement = document.getElementById('notice');
   const terminalHost = document.getElementById('terminals');
-  const tabButtons = [...document.querySelectorAll('[data-session-id]')];
+  const tabButtons = [...document.querySelectorAll('button[data-session-id]')];
+  const launchControls = [...document.querySelectorAll('[data-launch-session]')];
   const sessionStates = new Map();
   const tabStatusLabels = {
     idle: '未启动', starting: '正在启动', running: '运行中',
@@ -21,6 +23,8 @@
       cwd: '',
       runtimeStatus: 'idle',
       runId: null,
+      launchOnOpen: false,
+      unread: false,
       lastOutputSeq: 0,
       pendingOutput: [],
       writingOutput: false,
@@ -31,6 +35,7 @@
       fitAddon: null,
       pane: document.getElementById(`terminal-${sessionId}`),
       statusLabel: document.querySelector(`[data-status-for="${sessionId}"]`),
+      unreadLabel: document.querySelector(`[data-unread-for="${sessionId}"]`),
       tab
     });
   }
@@ -38,6 +43,8 @@
   let socket;
   let activeSessionId = 'codex';
   let connectionNotice = '';
+  let workspaceError = '';
+  let workspaceState = { cwd: null, launchOnOpen: { codex: false, agy: false, claude: false }, directoryError: null };
 
   function showNotice(text) {
     noticeElement.textContent = text;
@@ -46,7 +53,7 @@
 
   function refreshNotice() {
     const state = sessionStates.get(activeSessionId);
-    const notice = connectionNotice || state?.error || (state?.screenUnavailable
+    const notice = connectionNotice || workspaceError || workspaceState.directoryError || state?.error || (state?.screenUnavailable
       ? '此 CLI 已在后台运行，但当前终端画面无法恢复；可以继续输入或停止该会话。'
       : '');
     showNotice(notice);
@@ -54,17 +61,20 @@
 
   function updateDirectory() {
     const state = sessionStates.get(activeSessionId);
-    directoryElement.textContent = state?.cwd || '';
-    directoryElement.title = state?.cwd || '';
+    directoryElement.textContent = workspaceState.cwd || '未选择工作目录';
+    directoryElement.title = workspaceState.cwd || '';
     agentLabelElement.textContent = state?.agent || '';
+    chooseDirectoryButton.textContent = workspaceState.cwd ? '更改目录' : '选择工作目录';
   }
 
   function updateControls() {
     const state = sessionStates.get(activeSessionId);
     const connected = socket && socket.readyState === WebSocket.OPEN && Boolean(state);
     const active = state && ['starting', 'running', 'stopping'].includes(state.runtimeStatus);
-    startButton.disabled = !connected || active;
+    startButton.disabled = !connected || active || Boolean(workspaceState.directoryError);
     stopButton.disabled = !connected || !state || !['running', 'stopping'].includes(state.runtimeStatus);
+    const anyActive = [...sessionStates.values()].some(current => ['starting', 'running', 'stopping'].includes(current.runtimeStatus));
+    chooseDirectoryButton.disabled = !connected || anyActive || !window.agentDock?.selectWorkingDirectory;
     startButton.textContent = `启动 ${state?.agent || ''}`;
     const globalStatus = {
       idle: '未启动', starting: '正在启动', running: '运行中',
@@ -74,6 +84,12 @@
     for (const current of sessionStates.values()) {
       current.statusLabel.textContent = tabStatusLabels[current.runtimeStatus] || '未启动';
       current.tab.setAttribute('aria-label', `${current.agent}，${tabStatusLabels[current.runtimeStatus] || '未启动'}`);
+      current.unreadLabel.hidden = !current.unread;
+    }
+    for (const control of launchControls) {
+      const current = sessionStates.get(control.dataset.launchSession);
+      control.checked = current?.launchOnOpen === true;
+      control.disabled = !connected || !window.agentDock?.selectWorkingDirectory;
     }
   }
 
@@ -142,6 +158,7 @@
     const state = sessionStates.get(sessionId);
     if (!state) return;
     activeSessionId = sessionId;
+    state.unread = false;
     for (const current of sessionStates.values()) {
       const active = current.sessionId === sessionId;
       current.tab.classList.toggle('active', active);
@@ -158,11 +175,13 @@
 
   function handleMessage(message) {
     if (message.type === 'snapshot') {
+      workspaceState = message.workspace || workspaceState;
       for (const session of message.sessions) {
         const state = sessionStates.get(session.sessionId);
         if (!state) continue;
         state.agent = session.agent;
         state.cwd = session.cwd;
+        state.launchOnOpen = session.launchOnOpen === true;
         state.runtimeStatus = session.runtime.status;
         state.runId = session.runtime.runId;
         state.lastOutputSeq = session.runtime.seq;
@@ -170,6 +189,26 @@
         state.screenUnavailable = state.runtimeStatus === 'running';
       }
       activateSession(activeSessionId);
+      return;
+    }
+
+    if (message.type === 'workspace') {
+      workspaceState = message.workspace;
+      workspaceError = '';
+      for (const state of sessionStates.values()) {
+        state.cwd = workspaceState.cwd;
+        state.launchOnOpen = workspaceState.launchOnOpen[state.sessionId] === true;
+      }
+      updateDirectory();
+      updateControls();
+      refreshNotice();
+      return;
+    }
+
+    if (message.type === 'workspace-error') {
+      workspaceError = message.message || '无法保存工作区设置。';
+      updateControls();
+      refreshNotice();
       return;
     }
 
@@ -196,6 +235,8 @@
     if (message.type === 'output' && Number.isSafeInteger(message.seq) && message.seq > state.lastOutputSeq) {
       state.lastOutputSeq = message.seq;
       state.pendingOutput.push(message);
+      if (message.sessionId !== activeSessionId) state.unread = true;
+      updateControls();
       flushOutput(state);
     }
     if (message.type === 'exit') {
@@ -209,6 +250,22 @@
     tab.addEventListener('click', () => activateSession(tab.dataset.sessionId, true));
   }
   startButton.addEventListener('click', () => send({ type: 'start', sessionId: activeSessionId }));
+  chooseDirectoryButton.addEventListener('click', async () => {
+    try {
+      const cwd = await window.agentDock.selectWorkingDirectory();
+      if (cwd) send({ type: 'set-working-directory', sessionId: activeSessionId, cwd });
+    } catch (error) {
+      workspaceError = error instanceof Error ? error.message : String(error);
+      refreshNotice();
+    }
+  });
+  for (const control of launchControls) {
+    control.addEventListener('change', () => send({
+      type: 'launch-on-open',
+      sessionId: control.dataset.launchSession,
+      enabled: control.checked
+    }));
+  }
   stopButton.addEventListener('click', () => {
     const state = sessionStates.get(activeSessionId);
     if (state?.runId) send({ type: 'stop', sessionId: activeSessionId, runId: state.runId });

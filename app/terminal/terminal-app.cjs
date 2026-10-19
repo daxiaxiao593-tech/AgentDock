@@ -11,6 +11,8 @@ const cliDefinitions = [
   { id: 'claude', agent: 'claude', label: 'Claude Code' }
 ];
 
+const emptyLaunchOnOpen = Object.freeze({ codex: false, agy: false, claude: false });
+
 function parseWorkingDirectory(args) {
   if (!Array.isArray(args) || args.length !== 2 || args[0] !== '--cwd' || typeof args[1] !== 'string' || !args[1]) {
     throw new Error('Usage: npm run terminal -- --cwd <absolute Windows directory>');
@@ -19,9 +21,21 @@ function parseWorkingDirectory(args) {
   return args[1];
 }
 
-function createTerminalApp({ cwd, env = process.env, nodePty, platform = process.platform, killProcess, outputFlow } = {}) {
-  if (typeof cwd !== 'string' || !path.win32.isAbsolute(cwd)) throw new Error('An absolute Windows working directory is required');
-  const sessions = cliDefinitions.map(definition => ({ ...definition, cwd, launchOnOpen: false }));
+function createTerminalApp({ cwd, launchOnOpen = emptyLaunchOnOpen, workspaceStore, env = process.env, nodePty, platform = process.platform, killProcess, outputFlow } = {}) {
+  const workspace = workspaceStore?.load();
+  const workingDirectory = workspace ? workspace.cwd : cwd;
+  const launchSettings = workspace?.launchOnOpen || launchOnOpen;
+  if (!workspaceStore && (typeof workingDirectory !== 'string' || !path.win32.isAbsolute(workingDirectory))) {
+    throw new Error('An absolute Windows working directory is required');
+  }
+  if (workingDirectory !== null && (typeof workingDirectory !== 'string' || !path.win32.isAbsolute(workingDirectory))) {
+    throw new Error('An absolute Windows working directory is required');
+  }
+  const sessions = cliDefinitions.map(definition => ({
+    ...definition,
+    cwd: workingDirectory,
+    launchOnOpen: launchSettings[definition.id] === true
+  }));
   const manager = new SessionRuntimeManager({
     sessions,
     resolveLaunch: current => resolveCliLaunch(current.agent, current.cwd, { env }),
@@ -30,7 +44,13 @@ function createTerminalApp({ cwd, env = process.env, nodePty, platform = process
   });
   const server = createTerminalUiServer({
     manager,
-    sessions: sessions.map(session => ({ sessionId: session.id, agent: session.label, cwd: session.cwd }))
+    sessions: sessions.map(session => ({
+      sessionId: session.id,
+      agent: session.label,
+      cwd: session.cwd,
+      launchOnOpen: session.launchOnOpen
+    })),
+    workspaceStore
   });
   return { sessions, manager, server };
 }
