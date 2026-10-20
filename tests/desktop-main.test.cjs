@@ -138,6 +138,16 @@ test('canceling the exit confirmation keeps sessions and the service running', a
   assert.equal(calls.quit, 1);
 });
 
+test('dynamic session ids participate in exit confirmation', async () => {
+  const { controller, windows, host, calls } = createHarness({ closeResponses: [1] });
+  await controller.ready;
+  host.emit('session-state', { sessionId: 'session-random-uuid', runId: 'run-1', status: 'running' });
+  windows[0].close();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls.hostShutdown, 0);
+  assert.equal(calls.quit, 0);
+});
+
 test('directory selection is limited to the current trusted window and returns one folder', async () => {
   const { controller, windows, ipcMain, dialog } = createHarness({ openDialogResult: { canceled: false, filePaths: ['C:\\Projects\\Agent Dock'] } });
   await controller.ready;
@@ -165,4 +175,15 @@ test('a service crash is visible and is never automatically restarted', async ()
   assert.equal(calls.errors.length, 1);
   assert.match(calls.errors[0][1], /本机终端服务已异常结束/);
   assert.equal(calls.hostStart, 1);
+});
+
+test('native window controls overlay shares the compact toolbar without an extra title or menu row', async () => {
+  const { controller, windows } = createHarness();
+  await controller.ready;
+  const options = windows[0].options;
+  assert.equal(options.titleBarStyle, 'hidden');
+  assert.deepEqual(options.titleBarOverlay, { color: '#1d1d2d', symbolColor: '#e9eaf3', height: 35 });
+  assert.equal(options.autoHideMenuBar, true);
+  assert.equal(options.backgroundColor, '#1d1d2d');
+  assert.notEqual(options.frame, false);
 });

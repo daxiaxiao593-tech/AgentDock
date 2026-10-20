@@ -20,8 +20,23 @@ class SessionRuntimeManager extends EventEmitter {
 
   getRuntime(sessionId) {
     const runtime = this.runtimes.get(sessionId);
-    if (!runtime) return { sessionId, runId: null, seq: 0, status: 'idle', exitCode: null, error: null };
+    if (!runtime) return { sessionId, runId: null, seq: 0, outputSeq: 0, status: 'idle', exitCode: null, error: null };
     return this.snapshot(runtime);
+  }
+
+  registerSession(session) {
+    if (!session || typeof session.id !== 'string' || !session.id || this.sessions.has(session.id)) {
+      throw new Error('A unique session definition is required');
+    }
+    this.sessions.set(session.id, session);
+  }
+
+  removeSession(sessionId, runId) {
+    const runtime = this.runtimes.get(sessionId);
+    if (runtime && runtime.runId !== runId) return false;
+    if (runtime && ACTIVE_STATES.has(runtime.status)) throw new Error('Cannot remove an active session');
+    this.runtimes.delete(sessionId);
+    return this.sessions.delete(sessionId);
   }
 
   async start(sessionId) {
@@ -35,6 +50,7 @@ class SessionRuntimeManager extends EventEmitter {
       sessionId,
       runId: this.createRunId(),
       seq: 0,
+      outputSeq: 0,
       status: 'starting',
       exitCode: null,
       error: null,
@@ -64,7 +80,10 @@ class SessionRuntimeManager extends EventEmitter {
         ...this.outputFlow,
         nextSeq: () => ++runtime.seq,
         send: event => {
-          if (this.isCurrent(runtime) && !['stopped', 'failed'].includes(runtime.status)) this.emit('event', event);
+          if (this.isCurrent(runtime) && !['stopped', 'failed'].includes(runtime.status)) {
+            runtime.outputSeq = event.seq;
+            this.emit('event', event);
+          }
         },
         writeControl: data => runtime.pty.write(data)
       });
@@ -187,6 +206,7 @@ class SessionRuntimeManager extends EventEmitter {
       seq: ++runtime.seq,
       ...fields
     };
+    if (type === 'output') runtime.outputSeq = event.seq;
     this.emit('event', event);
     return event;
   }
@@ -200,6 +220,7 @@ class SessionRuntimeManager extends EventEmitter {
       sessionId: runtime.sessionId,
       runId: runtime.runId,
       seq: runtime.seq,
+      outputSeq: runtime.outputSeq,
       status: runtime.status,
       exitCode: runtime.exitCode,
       error: runtime.error

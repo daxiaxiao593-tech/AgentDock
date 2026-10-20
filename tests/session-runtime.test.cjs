@@ -42,6 +42,54 @@ function setup(options = {}) {
   return { manager, spawned, sessions };
 }
 
+test('outputSeq tracks only output, survives stop, and resets independently for a new run', async () => {
+  const { manager, spawned } = setup();
+  assert.equal(manager.getRuntime('session-a').outputSeq, 0);
+  const events = [];
+  manager.on('event', event => events.push(event));
+  await manager.start('session-a');
+  assert.equal(manager.getRuntime('session-a').outputSeq, 0);
+  spawned[0].handlers.onData('first');
+  const output = events.find(event => event.type === 'output');
+  assert.equal(manager.getRuntime('session-a').outputSeq, output.seq);
+  const runId = manager.getRuntime('session-a').runId;
+  await manager.stop('session-a', runId);
+  assert.equal(manager.getRuntime('session-a').outputSeq, output.seq);
+  assert.ok(manager.getRuntime('session-a').seq > output.seq);
+  await manager.start('session-a');
+  assert.equal(manager.getRuntime('session-a').outputSeq, 0);
+  spawned[0].handlers.onData('late old output');
+  assert.equal(manager.getRuntime('session-a').outputSeq, 0);
+  spawned[1].handlers.onData('new');
+  assert.equal(manager.getRuntime('session-a').outputSeq, events.filter(event => event.type === 'output').at(-1).seq);
+});
+
+test('outputSeq includes synchronous spawn output before the flow controller exists', async () => {
+  const { manager } = setup({ spawnPty: (_launch, handlers) => {
+    handlers.onData('early startup');
+    return { write() {}, resize() {}, async kill() {} };
+  } });
+  let output;
+  manager.on('event', event => { if (event.type === 'output') output = { event, snapshot: manager.getRuntime('session-a') }; });
+  await manager.start('session-a');
+  assert.equal(output.snapshot.outputSeq, output.event.seq);
+  assert.equal(manager.getRuntime('session-a').outputSeq, output.event.seq);
+  assert.ok(manager.getRuntime('session-a').seq > output.event.seq);
+});
+
+test('dynamic definitions permit same tool in independent directories and reject active removal', async () => {
+  const { manager, spawned } = setup();
+  manager.registerSession({ id: 'extra', agent: 'codex', cwd: 'E:\\other', launchOnOpen: false });
+  await manager.start('extra');
+  const run = manager.getRuntime('extra').runId;
+  assert.equal(spawned[0].launch.cwd, 'E:\\other');
+  assert.throws(() => manager.removeSession('extra', run), /active/i);
+  await manager.stop('extra', run);
+  assert.equal(manager.removeSession('extra', 'stale'), false);
+  assert.equal(manager.removeSession('extra', run), true);
+  assert.equal(manager.sessions.has('extra'), false);
+});
+
 test('同一会话启动幂等，不同会话拥有独立运行与 cwd', async () => {
   const { manager, spawned } = setup();
 

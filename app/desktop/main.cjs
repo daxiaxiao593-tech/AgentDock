@@ -3,7 +3,6 @@ const path = require('node:path');
 const { createDesktopServiceHost } = require('./service-host.cjs');
 const { resolveDesktopPaths } = require('./runtime-path.cjs');
 
-const SESSION_IDS = ['codex', 'agy', 'claude'];
 const ACTIVE_STATES = new Set(['starting', 'running', 'stopping']);
 
 function createDesktopApplication({
@@ -46,7 +45,7 @@ function createDesktopApplication({
   let allowWindowClose = false;
   let pendingFocus = false;
   let startupFailed = false;
-  const runtimeStates = new Map(SESSION_IDS.map(id => [id, { status: 'idle', runId: null }]));
+  const runtimeStates = new Map();
   const securedWebContents = new WeakSet();
 
   function focusWindow() {
@@ -85,15 +84,19 @@ function createDesktopApplication({
     contents.setWindowOpenHandler(() => ({ action: 'deny' }));
   }
 
+  function isTrustedRenderer(event) {
+    const senderUrl = event.senderFrame?.url;
+    let senderOrigin = null;
+    try { senderOrigin = new URL(senderUrl).origin; } catch { /* rejected below */ }
+    return Boolean(mainWindow && event.sender === mainWindow.webContents && senderOrigin === serviceOrigin);
+  }
+
   app.on('web-contents-created', (_event, contents) => secureWebContents(contents));
   app.on('second-instance', focusWindow);
   app.on('window-all-closed', () => app.quit());
 
   ipcMain.handle('agentdock:select-working-directory', async event => {
-    const senderUrl = event.senderFrame?.url;
-    let senderOrigin = null;
-    try { senderOrigin = new URL(senderUrl).origin; } catch { /* rejected below */ }
-    if (!mainWindow || event.sender !== mainWindow.webContents || senderOrigin !== serviceOrigin) {
+    if (!isTrustedRenderer(event)) {
       throw new Error('Untrusted renderer cannot select a working directory');
     }
     const selected = await dialog.showOpenDialog(mainWindow, {
@@ -143,7 +146,7 @@ function createDesktopApplication({
   async function startServiceAndWindow() {
     serviceHost = createServiceHost({ runtimePath, serviceEntryPath, userDataPath, startupTimeoutMs });
     serviceHost.on('session-state', state => {
-      if (!state || !SESSION_IDS.includes(state.sessionId) || !['idle', ...ACTIVE_STATES, 'stopped', 'failed'].includes(state.status)) return;
+      if (!state || typeof state.sessionId !== 'string' || !state.sessionId || !['idle', ...ACTIVE_STATES, 'stopped', 'failed'].includes(state.status)) return;
       runtimeStates.set(state.sessionId, { status: state.status, runId: state.runId ?? null });
     });
     serviceHost.on('exit', reportServiceExit);
@@ -166,7 +169,10 @@ function createDesktopApplication({
       minWidth: 960,
       minHeight: 640,
       show: false,
-      backgroundColor: '#12151d',
+      backgroundColor: '#1d1d2d',
+      titleBarStyle: 'hidden',
+      titleBarOverlay: { color: '#1d1d2d', symbolColor: '#e9eaf3', height: 35 },
+      autoHideMenuBar: true,
       webPreferences: {
         preload: preloadPath,
         nodeIntegration: false,

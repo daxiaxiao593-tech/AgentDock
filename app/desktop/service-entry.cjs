@@ -81,13 +81,6 @@ async function startDesktopService({ userDataPath, processLike = process, fileSy
     return { app, workspaceStore, shutdown };
   }
 
-  const workspace = workspaceStore.load();
-  let hasWorkingDirectory = false;
-  if (workspace.cwd) {
-    try { hasWorkingDirectory = fileSystem.statSync(workspace.cwd).isDirectory(); }
-    catch { hasWorkingDirectory = false; }
-  }
-  if (hasWorkingDirectory) await app.manager.startAuto();
   send({ type: 'ready', origin: ready.origin || ready.url, token: ready.token });
 
   return { app, workspaceStore, shutdown };

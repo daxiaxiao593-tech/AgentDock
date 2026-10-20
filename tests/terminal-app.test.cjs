@@ -43,3 +43,11 @@ test('desktop terminal app restores the configured shared directory and per-CLI 
   ]);
   assert.equal(app.manager.sessions.get('agy').launchOnOpen, false);
 });
+
+test('desktop accepts empty schema2 and binds same tool sessions to separate projects', () => {
+  const empty = { schemaVersion: 2, projects: [], sessions: [], selectedSessionId: null };
+  assert.deepEqual(createTerminalApp({ workspaceStore: { load: () => empty } }).sessions, []);
+  const config = { schemaVersion: 2, projects: [{ id: 'a', rootPath: 'C:\\one', collapsed: false }, { id: 'b', rootPath: 'C:\\two', collapsed: false }], sessions: [{ id: 'first', projectId: 'a', agent: 'codex', name: 'one', launchOnOpen: false }, { id: 'second', projectId: 'b', agent: 'codex', name: 'two', launchOnOpen: true }], selectedSessionId: 'second' };
+  const app = createTerminalApp({ workspaceStore: { load: () => config } });
+  assert.deepEqual(app.sessions.map(s => [s.id, s.cwd, s.launchOnOpen]), [['first', 'C:\\one', false], ['second', 'C:\\two', true]]);
+});

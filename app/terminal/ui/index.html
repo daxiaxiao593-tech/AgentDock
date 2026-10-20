@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AgentDock · CLI 终端</title>
+  <title>AgentDock</title>
   <link rel="stylesheet" href="/vendor/xterm.css">
   <link rel="stylesheet" href="/style.css">
   <script defer src="/vendor/xterm.js"></script>
@@ -12,44 +12,51 @@
 </head>
 <body>
   <header class="toolbar">
-    <div class="identity">
-      <strong>AgentDock</strong>
-      <span class="agent-label" id="agent-label">Codex</span>
-    </div>
-    <div class="directory" id="directory" title=""></div>
-    <button id="choose-directory" type="button" disabled>选择工作目录</button>
-    <div class="controls">
-      <span id="status" role="status" aria-live="polite">连接中</span>
-      <button id="start" class="primary" type="button" disabled>启动 Codex</button>
-      <button id="stop" type="button" disabled>停止</button>
-    </div>
+    <div class="window-label">AgentDock <span id="connection">连接中</span></div>
+    <div class="session-heading"><strong id="agent-label">工作区</strong><span id="session-name"></span></div>
+    <span id="directory" class="directory" title="当前会话工作目录"></span>
+    <button id="change-directory" type="button" title="">在其他目录新建会话</button>
+    <span id="shared-warning" class="shared-warning" role="note" title="此目录有多个会话，可能同时修改同一文件。" hidden>可能同时修改同一文件</span>
+    <span id="status" role="status" aria-live="polite"></span>
+    <button id="start" type="button" disabled>启动</button>
+    <button id="stop" type="button" disabled>停止</button>
+    <button id="session-menu-toggle" class="icon-button" type="button" aria-label="会话设置" aria-expanded="false" disabled>⋯</button>
   </header>
-  <nav class="session-tabs" role="tablist" aria-label="CLI 终端">
-    <div class="session-entry">
-      <button id="tab-codex" class="session-tab active" type="button" role="tab" aria-selected="true" aria-controls="terminal-codex" data-session-id="codex">
-        <span>Codex</span><span class="tab-status" data-status-for="codex">未启动</span><span class="tab-unread" data-unread-for="codex" hidden>新输出</span>
-      </button>
-      <label class="launch-setting"><input type="checkbox" data-launch-session="codex"> 随应用启动</label>
-    </div>
-    <div class="session-entry">
-      <button id="tab-agy" class="session-tab" type="button" role="tab" aria-selected="false" aria-controls="terminal-agy" data-session-id="agy">
-        <span>Antigravity</span><span class="tab-status" data-status-for="agy">未启动</span><span class="tab-unread" data-unread-for="agy" hidden>新输出</span>
-      </button>
-      <label class="launch-setting"><input type="checkbox" data-launch-session="agy"> 随应用启动</label>
-    </div>
-    <div class="session-entry">
-      <button id="tab-claude" class="session-tab" type="button" role="tab" aria-selected="false" aria-controls="terminal-claude" data-session-id="claude">
-        <span>Claude Code</span><span class="tab-status" data-status-for="claude">未启动</span><span class="tab-unread" data-unread-for="claude" hidden>新输出</span>
-      </button>
-      <label class="launch-setting"><input type="checkbox" data-launch-session="claude"> 随应用启动</label>
-    </div>
-  </nav>
-  <main id="terminals" aria-label="终端会话">
-    <section id="terminal-codex" class="terminal-panel active" role="tabpanel" aria-labelledby="tab-codex"></section>
-    <section id="terminal-agy" class="terminal-panel" role="tabpanel" aria-labelledby="tab-agy" hidden></section>
-    <section id="terminal-claude" class="terminal-panel" role="tabpanel" aria-labelledby="tab-claude" hidden></section>
-  </main>
-  <div class="workspace-warning" role="note">三个终端共享此工作目录；同时运行时可能修改同一文件。</div>
-  <div id="notice" class="notice" role="alert" hidden></div>
+  <aside class="sidebar" aria-label="项目与会话">
+    <div class="brand"><div class="brand-lockup"><img class="brand-icon" src="/agentdock-icon.png" alt="" aria-hidden="true"><strong>AgentDock</strong></div><small class="brand-tagline">All agents in one.</small></div>
+    <div class="tree-heading"><strong>项目会话</strong><div class="search-wrap"><input id="search" type="search" placeholder="搜索…" aria-label="搜索项目、路径或会话" title="搜索项目、路径或会话" autocomplete="off"></div><div class="tree-actions"><button id="start-all" type="button" disabled>启动全部</button><button id="new-session" class="icon-button" type="button" aria-label="新建会话" title="新建会话" disabled>＋</button></div></div>
+    <p id="project-create-disabled-reason" class="tree-empty" role="status" hidden></p>
+    <nav id="project-tree" aria-label="项目会话列表"></nav>
+    <footer class="sidebar-footer"><span id="workspace-count">0 个项目 · 0 个会话</span><span id="save-status" role="status">尚未连接</span></footer>
+  </aside>
+  <section class="terminal-area" aria-label="当前会话">
+    <div id="notice" class="notice" role="alert" hidden></div>
+    <main id="terminals" aria-label="终端会话">
+      <div id="empty-state" class="empty-state"><div class="empty-mark" aria-hidden="true">›_</div><h1>从一个真实目录开始</h1><p>新建会话，直接运行 Codex、Antigravity 或 Claude Code。</p><button id="empty-create" class="primary" type="button" disabled>新建会话</button><p class="muted">每个会话独立绑定目录，输入直接交给 CLI。</p></div>
+      <div id="session-empty-state" class="empty-state session-empty-state" hidden><h1>此会话尚未启动</h1><p>启动后，CLI 会在当前工作目录中运行。</p><button id="session-empty-start" class="primary" type="button" disabled>启动此会话</button></div>
+    </main>
+    <button id="latest" type="button" hidden>↓ 回到最新</button>
+  </section>
+  <div id="session-menu" class="session-menu" hidden>
+    <button id="rename-session" type="button">重命名会话</button>
+    <label class="menu-check"><input id="launch-on-open" type="checkbox"> 打开 AgentDock 时启动此会话</label>
+    <button id="change-session-directory" type="button">更改此会话目录…</button>
+    <button id="copy-directory" type="button">复制工作目录</button>
+    <button id="new-other-directory" type="button">在其他目录新建会话</button>
+    <button id="remove-session" class="danger-text" type="button">移除会话</button>
+  </div>
+  <dialog id="create-dialog" aria-labelledby="create-title">
+    <form id="create-form">
+      <h2 id="create-title">新建会话</h2><p id="create-context" class="dialog-description" hidden></p><p class="dialog-description">选择真实目录；此会话的所有操作都在该目录中运行。</p>
+      <label for="create-agent">工具</label><select id="create-agent"><option value="codex">Codex</option><option value="agy">Antigravity</option><option value="claude">Claude Code</option></select>
+      <label for="create-cwd">工作目录</label><div class="directory-picker"><input id="create-cwd" type="text" readonly placeholder="请选择一个文件夹"><button id="choose-directory" type="button">选择目录…</button></div>
+      <label for="create-name">会话名称 <span class="muted">（可选）</span></label><input id="create-name" type="text" maxlength="120" placeholder="例如：功能开发、代码审查" autocomplete="off">
+      <label class="check-label"><input id="create-launch" type="checkbox" checked> 打开 AgentDock 时启动此会话</label>
+      <p id="create-disabled-reason" class="dialog-description" role="status" hidden></p><p id="create-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button id="create-cancel" type="button">取消</button><button id="create-submit" aria-describedby="create-disabled-reason" class="primary" type="submit">创建并启动</button></div>
+    </form>
+  </dialog>
+  <dialog id="rename-dialog" aria-labelledby="rename-title"><form id="rename-form"><h2 id="rename-title">重命名会话</h2><label for="rename-name">会话名称</label><input id="rename-name" type="text" maxlength="120" required autocomplete="off"><p id="rename-disabled-reason" class="dialog-description" role="status" hidden></p><p id="rename-error" class="form-error" role="alert" hidden></p><div class="dialog-actions"><button id="rename-cancel" type="button">取消</button><button id="rename-submit" aria-describedby="rename-disabled-reason" class="primary" type="submit">保存名称</button></div></form></dialog>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title"><h2 id="confirm-title">确认操作</h2><p id="confirm-message"></p><p id="confirm-disabled-reason" class="dialog-description" role="status" hidden></p><p id="confirm-error" class="form-error" role="alert" hidden></p><div class="dialog-actions"><button id="confirm-cancel" type="button" autofocus>取消</button><button id="confirm-submit" aria-describedby="confirm-disabled-reason" class="danger" type="button">确认</button></div></dialog>
 </body>
 </html>

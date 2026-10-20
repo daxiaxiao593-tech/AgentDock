@@ -2,4 +2,5 @@ node_modules/
 .cache/
 test-results/
 .superpowers/
+dist/
 *.log

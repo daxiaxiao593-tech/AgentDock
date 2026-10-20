@@ -1,25 +1,114 @@
 {
   "name": "agentdock",
-  "version": "0.1.0",
+  "version": "0.2.20",
   "private": true,
   "description": "AgentDock Windows CLI terminal prototype",
+  "packageManager": "npm@11.11.0",
+  "engines": {
+    "node": "24.22.0",
+    "npm": "11.11.0"
+  },
   "main": "app/desktop/main.cjs",
   "scripts": {
     "terminal": "node app/terminal/terminal-app.cjs",
     "desktop": "electron .",
-    "test": "node --test tests/mock-engine.test.cjs tests/session-runtime.test.cjs tests/output-flow-controller.test.cjs tests/node-pty-driver.test.cjs tests/cli-launch-resolver.test.cjs tests/terminal-app.test.cjs tests/terminal-ui-server.test.cjs tests/session-runtime-fake-cli.test.cjs tests/node-pty-job-cleanup.integration.test.cjs tests/node-pty-conpty.integration.test.cjs tests/session-runtime-pty-backpressure.integration.test.cjs tests/desktop-workspace.test.cjs tests/desktop-service-host.test.cjs tests/desktop-runtime-path.test.cjs tests/desktop-main.test.cjs tests/desktop-service-entry.test.cjs tests/desktop-preload.test.cjs tests/terminal-ui-renderer.test.cjs",
-    "test:desktop": "node --test tests/electron-desktop-smoke.integration.test.cjs",
+    "rebuild:node-pty": "node scripts/apply-node-pty-patch.cjs && node scripts/rebuild-node-pty.cjs",
+    "dist:win": "npm run rebuild:node-pty && electron-builder --win nsis --x64 && npm run verify:package",
+    "verify:package": "node scripts/verify-windows-package.cjs",
+    "test": "node --test tests/mock-engine.test.cjs tests/session-runtime.test.cjs tests/output-flow-controller.test.cjs tests/node-pty-driver.test.cjs tests/cli-launch-resolver.test.cjs tests/terminal-app.test.cjs tests/terminal-ui-server.test.cjs tests/session-runtime-fake-cli.test.cjs tests/node-pty-job-cleanup.integration.test.cjs tests/node-pty-conpty.integration.test.cjs tests/session-runtime-pty-backpressure.integration.test.cjs tests/desktop-workspace.test.cjs tests/desktop-service-host.test.cjs tests/desktop-runtime-path.test.cjs tests/desktop-main.test.cjs tests/desktop-service-entry.test.cjs tests/desktop-preload.test.cjs tests/terminal-ui-renderer.test.cjs tests/windows-icon.test.cjs",
+    "test:desktop": "node --test --test-concurrency=1 tests/electron-desktop-smoke.integration.test.cjs tests/electron-multi-session.integration.test.cjs",
     "test:browser": "node tests/mock-browser.cjs",
-    "postinstall": "node scripts/apply-node-pty-patch.cjs && node scripts/rebuild-node-pty.cjs"
+    "postinstall": "npm run rebuild:node-pty"
   },
-  "dependencies": {
+  "devDependencies": {
     "@xterm/addon-fit": "0.11.0",
     "@xterm/xterm": "6.0.0",
+    "electron": "44.9.0",
+    "electron-builder": "26.15.3",
     "node": "24.22.0",
     "node-pty": "1.1.0",
     "ws": "8.22.0"
   },
-  "devDependencies": {
-    "electron": "44.9.0"
+  "build": {
+    "appId": "com.agentdock.desktop",
+    "productName": "AgentDock",
+    "executableName": "AgentDock",
+    "asar": true,
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "app/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "app",
+        "to": "agentdock-service/app",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "node_modules/@xterm/addon-fit",
+        "to": "agentdock-service/node_modules/@xterm/addon-fit"
+      },
+      {
+        "from": "node_modules/@xterm/xterm",
+        "to": "agentdock-service/node_modules/@xterm/xterm"
+      },
+      {
+        "from": "node_modules/node-pty",
+        "to": "agentdock-service/node_modules/node-pty",
+        "filter": [
+          "**/*",
+          "!**/*.exp",
+          "!**/*.iobj",
+          "!**/*.ipdb",
+          "!**/*.lib",
+          "!**/*.obj",
+          "!**/*.pdb"
+        ]
+      },
+      {
+        "from": "node_modules/ws",
+        "to": "agentdock-service/node_modules/ws"
+      },
+      {
+        "from": "node_modules/node/bin/node.exe",
+        "to": "agentdock-runtime/node.exe"
+      },
+      {
+        "from": "licenses/Node.js-v24.22.0-LICENSE",
+        "to": "agentdock-runtime/LICENSE"
+      },
+      {
+        "from": "THIRD-PARTY-NOTICES.md",
+        "to": "THIRD-PARTY-NOTICES.md"
+      }
+    ],
+    "win": {
+      "icon": "build/agentdock.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "AgentDock-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AgentDock",
+      "runAfterFinish": false,
+      "deleteAppDataOnUninstall": false
+    }
   }
 }
